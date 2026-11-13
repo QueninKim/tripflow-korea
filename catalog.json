@@ -1,0 +1,92 @@
+[
+  {
+    "id": "E49A2B97-EB38-41C8-BD97-08B16CAD33F6",
+    "name": "Gyeongbokgung Palace",
+    "koreanName": "경복궁",
+    "address": "서울 종로구 사직로 161",
+    "latitude": 37.5796,
+    "longitude": 126.977,
+    "category": "Culture"
+  },
+  {
+    "id": "C104C1FB-6EC4-4820-BE2E-A899A07DC652",
+    "name": "Bukchon Hanok Village",
+    "koreanName": "북촌한옥마을",
+    "address": "서울 종로구 계동길 37",
+    "latitude": 37.5826,
+    "longitude": 126.983,
+    "category": "Culture"
+  },
+  {
+    "id": "A01F3D1E-406E-4503-8152-EE085B63AAFB",
+    "name": "Gwangjang Market",
+    "koreanName": "광장시장",
+    "address": "서울 종로구 창경궁로 88",
+    "latitude": 37.57,
+    "longitude": 126.999,
+    "category": "Food"
+  },
+  {
+    "id": "673CCFB1-6BD1-4B0F-8635-55937C8E812B",
+    "name": "Seoul Forest",
+    "koreanName": "서울숲",
+    "address": "서울 성동구 뚝섬로 273",
+    "latitude": 37.5445,
+    "longitude": 127.0374,
+    "category": "Nature"
+  },
+  {
+    "id": "04D138E3-63C8-4C8C-9879-9BBA7F808542",
+    "name": "N Seoul Tower",
+    "koreanName": "남산서울타워",
+    "address": "서울 용산구 남산공원길 105",
+    "latitude": 37.5512,
+    "longitude": 126.9882,
+    "category": "View"
+  },
+  {
+    "id": "6D90AC3A-9272-4015-A764-87CF5FF77E30",
+    "name": "Haeundae Beach",
+    "koreanName": "해운대해수욕장",
+    "address": "부산 해운대구 해운대해변로 264",
+    "latitude": 35.1587,
+    "longitude": 129.1604,
+    "category": "Nature"
+  },
+  {
+    "id": "5312DC74-6FAA-4D22-913E-A11D3728E6FB",
+    "name": "Gamcheon Culture Village",
+    "koreanName": "감천문화마을",
+    "address": "부산 사하구 감내2로 203",
+    "latitude": 35.0975,
+    "longitude": 129.0106,
+    "category": "Culture"
+  },
+  {
+    "id": "6974E9EA-32F6-4C1A-B93D-8B5709EFB2E0",
+    "name": "Seongsan Ilchulbong",
+    "koreanName": "성산일출봉",
+    "address": "제주 서귀포시 성산읍 일출로 284-12",
+    "latitude": 33.458,
+    "longitude": 126.9425,
+    "category": "Nature"
+  },
+  {
+    "id": "146F3446-184B-4624-964F-9529E6132F57",
+    "name": "Donggung Palace & Wolji Pond",
+    "koreanName": "동궁과 월지",
+    "address": "경북 경주시 원화로 102",
+    "latitude": 35.8343,
+    "longitude": 129.2266,
+    "category": "Culture"
+  },
+  {
+    "id": "65100892-31D3-4B7B-8AEA-59738372C98E",
+    "name": "Jeonju Hanok Village",
+    "koreanName": "전주한옥마을",
+    "address": "전북특별자치도 전주시 완산구 기린대로 99",
+    "latitude": 35.8151,
+    "longitude": 127.153,
+    "category": "Culture"
+  }
+]
