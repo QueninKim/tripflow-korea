@@ -1,6 +1,6 @@
-import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState} from './core.js?v=web-3';
+import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState,budgetCurrencies,budgetAmount,convertedBudget,budgetTotal} from './core.js?v=web-4';
 
-const VERSION='web-3';
+const VERSION='web-4';
 const native=!!window.webkit?.messageHandlers?.tripflow;
 const bridge=(command,payload={})=>window.webkit.messageHandlers.tripflow.postMessage({command,...payload});
 const $=s=>document.querySelector(s);
@@ -9,6 +9,8 @@ let data,catalog=[],tab='plan',dayIndex=0,query='',area='대한민국',results=[
 let generation=0,debounce,toastTimer,saveQueue=Promise.resolve(),saveFailed=false,revision=0;
 let lastSearchAt=0,abortSearch,activeSearchKey;
 const cache=new Map();
+let budgetDraft=null,budgetTimer;
+const rateRequests=new Map();
 const areas=[['대한민국','All Korea'],['서울','Seoul'],['부산','Busan'],['제주','Jeju'],['강원','Gangwon'],['경기','Gyeonggi'],['인천','Incheon'],['대구','Daegu'],['대전','Daejeon'],['광주','Gwangju'],['울산','Ulsan'],['세종','Sejong'],['충북','Chungbuk'],['충남','Chungnam'],['전북','Jeonbuk'],['전남','Jeonnam'],['경북','Gyeongbuk'],['경남','Gyeongnam']];
 const categories=[['관광명소','Attractions','⌂'],['음식점','Restaurants','♧'],['카페','Cafés','☕'],['숙소','Hotels','⌑'],['박물관','Museums','▥'],['공원','Parks','♧'],['전통시장','Markets','▤'],['해변','Beaches','≈']];
 const t=(en,ko)=>data?.language==='ko'?ko:en;
@@ -98,7 +100,7 @@ async function photonSearch(term){
 function budgetPage(){
   const tr=trip();if(!tr)return `<div class="empty">${t('Create a trip to track expenses.','여행을 만든 뒤 경비를 기록하세요.')}${btn('newTrip',t('Create a trip','여행 만들기'),'primary')}</div>`;
   const spent=tr.expenses.reduce((sum,e)=>sum+e.amountKRW,0),percent=tr.budgetKRW?Math.min(100,spent/tr.budgetKRW*100):0;
-  return `<div class="intro"><div class="eyebrow">MORE MEMORIES, LESS MATH</div><h1>${t('A little peace of mind.','여행 경비, 한눈에.')}</h1><p>${h(title(tr))} · ${t('All expenses stay on your device.','경비는 이 기기에 저장됩니다.')}</p></div><div class="budget-grid"><div class="panel summary-card"><div class="eyebrow">${t('REMAINING','남은 예산')}</div><div class="money">${krw(tr.budgetKRW-spent)}</div><small>${h(homeMoney(tr.budgetKRW-spent))}</small><div class="budget-bar"><span style="width:${percent}%"></span></div><small>${t('Budget','전체 예산')} ${krw(tr.budgetKRW)}</small></div><div class="panel"><div class="eyebrow">${t('SPENT SO FAR','지금까지 지출')}</div><div class="money">${krw(spent)}</div><p class="muted" style="margin-top:8px">${tr.expenses.length}${t(' expenses recorded','건 기록')}</p><div class="row wrap" style="margin-top:16px">${btn('newExpense',t('＋ Record expense','＋ 경비 기록'),'primary')}${btn('importExpense',t('Paste payment message','결제 메시지 붙여넣기'),'text-btn')}</div></div></div><div class="section-heading"><h2>${t('The little things add up.','차곡차곡 모인 기록')}</h2>${btn('editTrip',t('Edit budget','예산 수정'),'text-btn')}</div><div class="panel">${tr.expenses.length?[...tr.expenses].reverse().map(e=>`<article class="expense"><span class="place-icon" aria-hidden="true" style="height:44px;width:44px;font-size:20px">${e.category==='Food & drink'?'☕':'▱'}</span><div><strong>${h(e.merchant)}</strong><small>${h(catName(e.category))} · ${t('Day ','')+(e.dayIndex+1)+t('','일차')}</small></div><div class="amount">${krw(e.amountKRW)}<small>${h(homeMoney(e.amountKRW))}</small></div><button class="delete" data-action="deleteExpense" data-id="${e.id}" aria-label="${t('Delete expense','경비 삭제')}">×</button></article>`).join(''):`<div class="empty"><p>${t('Your first coffee, train ride or market lunch. Record it here.','첫 커피, 기차표, 시장 점심부터 기록해보세요.')}</p></div>`}</div>`;
+  return `<div class="intro"><div class="eyebrow">MORE MEMORIES, LESS MATH</div><h1>${t('A little peace of mind.','여행 경비, 한눈에.')}</h1><p>${h(title(tr))} · ${t('All expenses stay on your device.','경비는 이 기기에 저장됩니다.')}</p></div><div class="budget-grid"><div class="panel summary-card"><div class="eyebrow">${t('REMAINING','남은 예산')}</div><div class="money">${krw(tr.budgetKRW-spent)}</div><small>${h(homeMoney(tr.budgetKRW-spent))}</small><div class="budget-bar"><span style="width:${percent}%"></span></div><small>${t('Budget','전체 예산')} ${krw(tr.budgetKRW)}</small><div style="margin-top:17px">${btn('addBudget',t('＋ Add budget','＋ 예산 추가'),'primary')}</div></div><div class="panel"><div class="eyebrow">${t('SPENT SO FAR','지금까지 지출')}</div><div class="money">${krw(spent)}</div><p class="muted" style="margin-top:8px">${tr.expenses.length}${t(' expenses recorded','건 기록')}</p><div class="row wrap" style="margin-top:16px">${btn('newExpense',t('＋ Record expense','＋ 경비 기록'),'primary')}${btn('importExpense',t('Paste payment message','결제 메시지 붙여넣기'),'text-btn')}</div></div></div>${budgetEntryLabel(tr)}<div class="section-heading"><h2>${t('The little things add up.','차곡차곡 모인 기록')}</h2>${btn('editTrip',t('Edit budget','예산 수정'),'text-btn')}</div><div class="panel">${tr.expenses.length?[...tr.expenses].reverse().map(e=>`<article class="expense"><span class="place-icon" aria-hidden="true" style="height:44px;width:44px;font-size:20px">${e.category==='Food & drink'?'☕':'▱'}</span><div><strong>${h(e.merchant)}</strong><small>${h(catName(e.category))} · ${t('Day ','')+(e.dayIndex+1)+t('','일차')}</small></div><div class="amount">${krw(e.amountKRW)}<small>${h(homeMoney(e.amountKRW))}</small></div><button class="delete" data-action="deleteExpense" data-id="${e.id}" aria-label="${t('Delete expense','경비 삭제')}">×</button></article>`).join(''):`<div class="empty"><p>${t('Your first coffee, train ride or market lunch. Record it here.','첫 커피, 기차표, 시장 점심부터 기록해보세요.')}</p></div>`}</div>`;
 }
 function toolsPage(){
   const rate=data.rates[data.homeCurrency];
@@ -116,9 +118,104 @@ function languageModal(){
 function tripModal(){openModal(`${modalTop(t('Your trips','나의 여행'))}${data.trips.map(tr=>btn('selectTrip',`${h(title(tr))}<small>${h(cityName(tr.city))} · ${tr.days.length}${t(' days','일')}</small>`,'trip-option',`data-id="${tr.id}"`)).join('')}${btn('newTrip',t('＋ New trip','＋ 새 여행'),'primary full')}`);}
 function newTripModal(edit=false){
   const tr=edit?trip():null;
-  openModal(`${modalTop(edit?t('Trip settings','여행 설정'):t('A new adventure','새로운 여행'))}<form id="trip-form" class="form-grid" data-edit="${edit}"><label>${t('Trip name','여행 이름')}<input name="title" maxlength="100" required placeholder="${t('My Korea trip','나의 한국 여행')}" value="${h(tr?.title||'')}"></label><label>${t('City or region','도시·지역')}<input name="city" maxlength="80" required value="${h(tr?.city||t('Seoul','서울'))}"></label><div class="field-pair"><label>${t('Start date','출발일')}<input type="date" name="date" required value="${dateInput(tr?toDate(tr.startDate):new Date())}"></label><label>${t('Days','여행일수')}<input type="number" name="days" min="1" max="30" required value="${tr?.days.length||3}" ${edit?'readonly':''}></label></div><label>${t('Budget (KRW)','예산 (원)')}<input type="number" inputmode="numeric" name="budget" min="0" max="1000000000" step="1" required value="${tr?.budgetKRW??450000}"></label><button class="primary" type="submit">${t(edit?'Save':'Create',edit?'저장':'만들기')}</button></form>${edit?btn('deleteTrip',t('Delete this trip','이 여행 삭제'),'text-btn',`style="color:#a73a2a;margin-top:15px"`):''}`);
+  openModal(`${modalTop(edit?t('Trip settings','여행 설정'):t('A new adventure','새로운 여행'))}<form id="trip-form" class="form-grid" data-edit="${edit}" data-trip-id="${tr?.id||''}"><label>${t('Trip name','여행 이름')}<input name="title" maxlength="100" required placeholder="${t('My Korea trip','나의 한국 여행')}" value="${h(tr?.title||'')}"></label><label>${t('City or region','도시·지역')}<input name="city" maxlength="80" required value="${h(tr?.city||t('Seoul','서울'))}"></label><div class="field-pair"><label>${t('Start date','출발일')}<input type="date" name="date" required value="${dateInput(tr?toDate(tr.startDate):new Date())}"></label><label>${t('Days','여행일수')}<input type="number" name="days" min="1" max="30" required value="${tr?.days.length||3}" ${edit?'readonly':''}></label></div>${budgetFields(String(tr?.budgetKRW??450000))}<button class="primary" type="submit">${t(edit?'Save':'Create',edit?'저장':'만들기')}</button></form>${edit?btn('deleteTrip',t('Delete this trip','이 여행 삭제'),'text-btn',`style="color:#a73a2a;margin-top:15px"`):''}`);
+  beginBudgetForm($('#trip-form'));
 }
 function dateInput(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function budgetFields(amount,currency='KRW'){
+  return `<fieldset class="budget-inputs"><legend>${t('Budget amount','예산 금액')}</legend><div class="field-pair"><label>${t('Currency','입력 통화')}<select name="budgetCurrency" id="budgetCurrency">${budgetCurrencies.map(c=>`<option value="${c}" ${currency===c?'selected':''}>${c}</option>`).join('')}</select></label><label>${t('Amount','입력 금액')}<input name="budget" id="budgetAmount" inputmode="decimal" autocomplete="off" maxlength="32" required value="${h(amount)}" data-default="${amount!==''}" placeholder="${t('Enter amount','금액 입력')}"></label></div><div id="foreign-budget-options" class="stack" ${currency==='KRW'?'hidden':''}><label>${t('Exchange rate to apply','적용할 환율')}<select name="budgetRateMode" id="budgetRateMode"><option value="latest">${t('Fetch latest reference rate','최신 환율 조회')}</option><option value="manual">${t('My purchased exchange rate','내가 구매한 환율')}</option></select></label><div id="purchased-rate-fields" class="stack" hidden><div class="field-pair"><label>${t('Currency units','환율 기준 단위')}<select name="budgetRateUnit" id="budgetRateUnit"><option value="1">1 ${h(currency)}</option><option value="100">100 ${h(currency)}</option></select></label><label>${t('Price in KRW','위 금액의 원화 가격')}<input name="budgetPurchasedRate" id="budgetPurchasedRate" inputmode="decimal" autocomplete="off" maxlength="24" placeholder="${t('e.g. 1,450','예: 1,450')}"></label></div><p class="note">${t('Example: for 100 JPY purchased at ₩950, select 100 JPY and enter 950.','예: 100엔을 950원에 샀다면, 100 JPY를 선택하고 950을 입력하세요.')}</p></div>${btn('refreshBudgetRate',t('Refresh latest rate','최신 환율 다시 조회'),'text-btn',`id="refreshBudgetRate"`)}</div><div id="budgetQuote" class="budget-quote" role="status" aria-live="polite" aria-atomic="true"></div><p class="note">${t('The KRW budget is fixed when you save. Latest rates are published reference rates, not second-by-second quotes or card charges.','저장한 원화 예산은 자동으로 바뀌지 않습니다. 조회 환율은 최신 공시 기준환율이며 초단위 시세·카드 적용 환율과 다를 수 있습니다.')}</p></fieldset>`;
+}
+function beginBudgetForm(form,adding=false){
+  budgetDraft={form,adding,tripID:form.dataset.tripId||null,baseKRW:adding?trip().budgetKRW:0,sequence:0,quote:null,rate:null};
+  updateBudgetControls();void updateBudgetPreview();
+}
+function updateBudgetControls(){
+  const f=budgetDraft?.form;if(!f?.isConnected)return;
+  const currency=f.elements.budgetCurrency.value,foreign=currency!=='KRW',manual=f.elements.budgetRateMode.value==='manual';
+  f.querySelector('#foreign-budget-options').hidden=!foreign;
+  f.querySelector('#purchased-rate-fields').hidden=!foreign||!manual;
+  f.querySelector('#refreshBudgetRate').hidden=!foreign||manual;
+  for(const option of f.elements.budgetRateUnit.options)option.textContent=option.value+' '+currency;
+  f.elements.budgetPurchasedRate.required=foreign&&manual;
+}
+function budgetFingerprint(f){return ['budget','budgetCurrency','budgetRateMode','budgetRateUnit','budgetPurchasedRate'].map(n=>f.elements[n].value).join('|');}
+function budgetError(error){
+  return ({'invalid-amount':t('Enter a valid, non-negative amount.','0 이상의 올바른 금액을 입력해주세요.'),'whole-units':t('KRW and JPY amounts use whole units.','원화와 엔화 금액은 정수로 입력해주세요.'),'invalid-rate':t('Enter a purchased exchange rate greater than zero.','0보다 큰 구매 환율을 입력해주세요.'),'budget-limit':t('The total budget cannot exceed ₩1,000,000,000.','전체 예산은 10억 원까지 입력할 수 있습니다.')})[error.message]||t('Could not fetch a fresh rate. Retry or enter your purchased rate. Your budget has not changed.','최신 환율을 조회하지 못했습니다. 다시 조회하거나 구매 환율을 입력하세요. 예산은 변경되지 않았습니다.');
+}
+async function requestRate(currency){
+  if(rateRequests.has(currency))return rateRequests.get(currency);
+  const task=(async()=>{
+    let rate,timer;
+    try{
+      if(native)rate=await Promise.race([bridge('fx',{currency}),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('rate-timeout')),15000);})]);
+      else{
+        const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);
+        const response=await fetch(`https://api.frankfurter.dev/v2/rate/${currency.toLowerCase()}/krw`,{cache:'no-store',signal:controller.signal});
+        if(!response.ok)throw Error('rate-unavailable');const body=await response.json();
+        if(body.base.toUpperCase()!==currency||body.quote.toUpperCase()!=='KRW')throw Error('rate-unavailable');
+        rate={currency,krwPerUnit:body.rate,referenceDate:body.date,fetchedAt:now()};
+      }
+      if(rate.currency!==currency||!Number.isFinite(rate.krwPerUnit)||rate.krwPerUnit<=0||!/^\d{4}-\d{2}-\d{2}$/.test(rate.referenceDate))throw Error('rate-unavailable');
+      return rate;
+    }finally{clearTimeout(timer);}
+  })();
+  rateRequests.set(currency,task);try{return await task;}finally{if(rateRequests.get(currency)===task)rateRequests.delete(currency);}
+}
+async function updateBudgetPreview({refresh=false}={}){
+  clearTimeout(budgetTimer);
+  const draft=budgetDraft,f=draft?.form;if(!f?.isConnected||!modal.open)return null;
+  const seq=++draft.sequence,fingerprint=budgetFingerprint(f),currency=f.elements.budgetCurrency.value;
+  const display=f.querySelector('#budgetQuote'),submit=f.querySelector('[type="submit"]');
+  draft.quote=null;submit.disabled=true;display.classList.remove('error');
+  if(!f.elements.budget.value.trim()){display.textContent=t('Choose a currency and enter an amount.','통화를 선택하고 금액을 입력하세요.');return null;}
+  try{
+    const amount=budgetAmount(f.elements.budget.value,currency);
+    let rate,unit=1,rawRate=1,source='krw';
+    if(currency==='KRW')rate={currency,krwPerUnit:1,referenceDate:'',fetchedAt:now()};
+    else if(f.elements.budgetRateMode.value==='manual'){
+      source='manual';unit=Number(f.elements.budgetRateUnit.value);rawRate=f.elements.budgetPurchasedRate.value.trim();
+      if(!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,8})?$/.test(rawRate))throw Error('invalid-rate');
+      rate={currency,krwPerUnit:Number(rawRate.replaceAll(',',''))/unit,referenceDate:'',fetchedAt:now()};
+    }else{
+      source='latest';display.textContent=t('Fetching the latest reference rate…','최신 기준환율을 조회하는 중…');
+      if(refresh)draft.rate=null;
+      rate=!refresh&&draft.rate?.currency===currency?draft.rate:await requestRate(currency);
+      if(budgetDraft!==draft||seq!==draft.sequence||!f.isConnected||!modal.open)return null;
+      draft.rate=rate;rawRate=rate.krwPerUnit;
+    }
+    const amountKRW=convertedBudget(amount,currency,rawRate,unit),totalKRW=budgetTotal(draft.baseKRW,amountKRW,draft.adding);
+    const quote={amountKRW,totalKRW,currency,source,rate,unit,rawRate,fingerprint};
+    if(budgetDraft!==draft||seq!==draft.sequence||fingerprint!==budgetFingerprint(f))return null;
+    const rateNumber=Number(String(rawRate).replaceAll(',',''));
+    display.innerHTML=`<small>${t('KRW amount to apply','반영할 원화 금액')}</small><strong>${krw(amountKRW)}</strong>${currency==='KRW'?'':`<p>${unit} ${h(currency)} = ${h(new Intl.NumberFormat(data.language==='ko'?'ko-KR':'en-US',{style:'currency',currency:'KRW',maximumFractionDigits:8}).format(rateNumber))}</p><small>${source==='manual'?t('Your purchased rate · entered manually','구매 환율 · 직접 입력'):t('Latest reference rate · Frankfurter','최신 기준환율 · Frankfurter')}${source==='latest'&&rate.referenceDate?' · '+h(rate.referenceDate):''}</small>`}${draft.adding?`<p class="budget-total">${t('Budget after adding','추가 후 전체 예산')} <b>${krw(totalKRW)}</b></p>`:''}`;
+    draft.quote=quote;submit.disabled=false;return quote;
+  }catch(error){
+    if(budgetDraft!==draft||seq!==draft.sequence||!f.isConnected)return null;
+    display.textContent=budgetError(error);display.classList.add('error');return null;
+  }
+}
+async function budgetQuoteForSubmit(f){
+  if(budgetDraft?.form!==f)return null;
+  const q=budgetDraft.quote;
+  const fresh=await updateBudgetPreview({refresh:q?.source==='latest'&&now()-q.rate.fetchedAt>60});
+  return fresh?.fingerprint===budgetFingerprint(f)?fresh:null;
+}
+function rememberBudgetQuote(tr,quote,changed=true){
+  if(!changed&&quote.currency==='KRW')return;
+  delete data.rates['budget-manual:'+tr.id];delete data.rates['budget-latest:'+tr.id];
+  if(quote.source!=='krw')data.rates['budget-'+quote.source+':'+tr.id]=quote.rate;
+  if(quote.source==='latest')data.rates[quote.currency]=quote.rate;
+}
+function budgetEntryLabel(tr){
+  const manual=data.rates['budget-manual:'+tr.id],latest=data.rates['budget-latest:'+tr.id],rate=manual||latest;
+  if(!rate)return '';
+  return `<p class="note budget-basis">${t('Last budget entry used','마지막 예산 입력에 적용한 환율')}: 1 ${h(rate.currency)} = ${h(new Intl.NumberFormat('ko-KR',{maximumFractionDigits:8}).format(rate.krwPerUnit))}${t(' KRW','원')} · ${manual?t('Purchased rate','구매 환율'):t('Published reference rate','공시 기준환율')}${!manual&&rate.referenceDate?' · '+h(rate.referenceDate):''}</p>`;
+}
+function addBudgetModal(){
+  const tr=trip();if(!tr)return;
+  openModal(`${modalTop(t('Add to your budget','예산 추가'))}<p class="note" style="margin-bottom:16px">${t('Current budget','현재 전체 예산')}: ${krw(tr.budgetKRW)}</p><form id="budget-form" data-trip-id="${tr.id}" class="form-grid">${budgetFields('',data.homeCurrency)}<button type="submit" class="primary">${t('Add to budget','예산에 추가')}</button></form>`);
+  beginBudgetForm($('#budget-form'),true);
+}
 function placeModal(p){
   openModal(`${modalTop(t('A closer look','장소 자세히'))}<div class="eyebrow">${h(catName(p.category))}</div><h2 style="margin:12px 0">${h(placeName(p))}</h2><p class="muted">${h(p.address)}</p><div class="row wrap" style="margin:18px 0">${btn('copyAddress',t('Copy address','주소 복사'),'text-btn',`data-place="${h(p.id)}"`)}<a href="${placeURL(p)}" target="_blank" rel="noopener">${t('Kakao Maps ↗','카카오맵 ↗')}</a></div>${trip()?`<form id="add-place-form" class="form-grid" data-id="${h(p.id)}"><label>${t('Add to day','추가할 날짜')}<select name="day">${trip().days.map((_,i)=>`<option value="${i}" ${i===dayIndex?'selected':''}>${t('Day ','')+(i+1)+t('','일차')}</option>`).join('')}</select></label><button class="primary" type="submit">${t('Add to my itinerary','내 일정에 추가')}</button></form>`:`${btn('newTrip',t('Create a trip first','먼저 여행 만들기'),'primary full')}`}`);
 }
@@ -155,7 +252,19 @@ root.addEventListener('input',e=>{
   query=e.target.value;generation++;results=[];searchError='';searched=false;searching=false;clearTimeout(debounce);updateSearch();
   if(native&&query.trim().length>=2)debounce=setTimeout(search,650);
 });
+document.addEventListener('input',e=>{
+  const f=e.target.closest('#trip-form,#budget-form');
+  if(!f||budgetDraft?.form!==f||!['budget','budgetPurchasedRate'].includes(e.target.name))return;
+  if(e.target.name==='budget')e.target.dataset.default='false';
+  budgetDraft.quote=null;f.querySelector('[type="submit"]').disabled=true;
+  clearTimeout(budgetTimer);budgetTimer=setTimeout(()=>updateBudgetPreview(),300);
+});
 document.addEventListener('change',async e=>{
+  const f=e.target.closest('#trip-form,#budget-form');
+  if(f&&budgetDraft?.form===f&&['budgetCurrency','budgetRateMode','budgetRateUnit'].includes(e.target.name)){
+    if(e.target.name==='budgetCurrency'&&f.elements.budget.dataset.default==='true'){f.elements.budget.value='';f.elements.budget.dataset.default='false';}
+    updateBudgetControls();await updateBudgetPreview();
+  }
   if(e.target.id==='searchAreaPicker'){area=e.target.value;if(query)await search();}
   if(e.target.id==='homeCurrency'){data.homeCurrency=e.target.value;await save();render();}
   if(e.target.id==='restore-file'){
@@ -165,14 +274,38 @@ document.addEventListener('change',async e=>{
   }
 });
 document.addEventListener('submit',async e=>{
-  const f=e.target;if(!['search-form','trip-form','add-place-form','stop-form','expense-form','start-form','import-form'].includes(f.id))return;e.preventDefault();const v=new FormData(f);
+  const f=e.target;if(!['search-form','trip-form','budget-form','add-place-form','stop-form','expense-form','start-form','import-form'].includes(f.id))return;e.preventDefault();const v=new FormData(f);
   try{
     if(f.id==='search-form'){query=String(v.get('q'));f.querySelector('input').blur();await search();return;}
     if(f.id==='trip-form'){
-      const budget=Number(v.get('budget')),days=Number(v.get('days')),name=String(v.get('title')).trim();if(!name||!Number.isSafeInteger(budget)||budget<0||days<1||days>30)return;
+      if(f.dataset.submitting==='true')return;f.dataset.submitting='true';
+      const q=await budgetQuoteForSubmit(f);if(!q){delete f.dataset.submitting;return;}
+      const previous=structuredClone(data);
+      const days=Number(v.get('days')),name=String(v.get('title')).trim();if(!name||days<1||days>30){delete f.dataset.submitting;return;}
       const start=(new Date(String(v.get('date'))+'T09:00:00').getTime()/1000)-978307200;
-      if(f.dataset.edit==='true'){Object.assign(trip(),{title:name,city:String(v.get('city')).trim(),startDate:start,budgetKRW:budget,isSample:false});}
-      else{const tr={id:uuid(),title:name,city:String(v.get('city')).trim(),startDate:start,budgetKRW:budget,expenses:[],isSample:false,days:Array.from({length:days},()=>({id:uuid(),startMinutes:540,stops:[]}))};data.trips.push(tr);data.selectedTripID=tr.id;dayIndex=0;tab='plan';}
+      if(f.dataset.edit==='true'){
+        const target=data.trips.find(x=>x.id===f.dataset.tripId);if(!target){delete f.dataset.submitting;return;}
+        const changed=target.budgetKRW!==q.totalKRW;
+        Object.assign(target,{title:name,city:String(v.get('city')).trim(),startDate:start,budgetKRW:q.totalKRW,isSample:false});rememberBudgetQuote(target,q,changed);
+      }else{
+        const tr={id:uuid(),title:name,city:String(v.get('city')).trim(),startDate:start,budgetKRW:q.totalKRW,expenses:[],isSample:false,days:Array.from({length:days},()=>({id:uuid(),startMinutes:540,stops:[]}))};
+        data.trips.push(tr);data.selectedTripID=tr.id;dayIndex=0;tab='plan';rememberBudgetQuote(tr,q);
+      }
+      if(await save()){modal.close();render();}
+      else{data=previous;delete f.dataset.submitting;await updateBudgetPreview();}
+      return;
+    }
+    if(f.id==='budget-form'){
+      if(f.dataset.submitting==='true')return;f.dataset.submitting='true';
+      const q=await budgetQuoteForSubmit(f);
+      const target=data.trips.find(x=>x.id===f.dataset.tripId);
+      if(!q||!target){delete f.dataset.submitting;return;}
+      if(target.budgetKRW!==budgetDraft.baseKRW){budgetDraft.baseKRW=target.budgetKRW;delete f.dataset.submitting;await updateBudgetPreview();toast(t('The budget changed. Review the new total.','예산이 변경됐습니다. 새 합계를 확인해주세요.'));return;}
+      const previous=structuredClone(data);
+      target.budgetKRW=q.totalKRW;rememberBudgetQuote(target,q);
+      if(await save()){modal.close();render();toast(t('Budget added','예산을 추가했어요'));}
+      else{data=previous;delete f.dataset.submitting;await updateBudgetPreview();}
+      return;
     }
     if(f.id==='add-place-form'){const p=findPlace(f.dataset.id);dayIndex=Number(v.get('day'));if(p&&day()){day().stops.push({id:uuid(),place:p,stayMinutes:60,mode:'transit',durationSource:'manual',note:''});toast(t(`Added to Day ${dayIndex+1}`,`${dayIndex+1}일차에 추가했어요`));}}
     if(f.id==='stop-form'){const s=day().stops.find(x=>x.id===f.dataset.id);const travel=String(v.get('travel'));const changed=s.mode!==v.get('mode')||String(s.travelMinutes??'')!==travel;s.stayMinutes=Number(v.get('stay'));s.mode=String(v.get('mode'));s.note=String(v.get('note'));if(changed){if(travel==='')delete s.travelMinutes;else s.travelMinutes=Number(travel);s.durationSource='manual';}}
@@ -202,6 +335,8 @@ document.addEventListener('click',async e=>{
     if(a==='selectTrip'){data.selectedTripID=id;dayIndex=0;await save();modal.close();render();return;}
     if(a==='newTrip'){if(modal.open)modal.close();newTripModal();return;}
     if(a==='editTrip'){newTripModal(true);return;}
+    if(a==='addBudget'){addBudgetModal();return;}
+    if(a==='refreshBudgetRate'){await updateBudgetPreview({refresh:true});return;}
     if(a==='category'){query=el.dataset.query;render();$('#placeSearchField').blur();await search();return;}
     if(a==='place'){placeModal(findPlace(id));return;}
     if(a==='editStop'){editStopModal(id);return;}
@@ -232,9 +367,7 @@ document.addEventListener('click',async e=>{
 async function loadFX(){
   const currency=data.homeCurrency;
   toast(t('Loading reference rate…','기준환율을 불러오는 중…'));
-  let rate;
-  if(native)rate=await bridge('fx',{currency});
-  else{const response=await fetch(`https://api.frankfurter.dev/v2/rate/${currency.toLowerCase()}/krw`);if(!response.ok)throw Error('fx');const body=await response.json();if(body.base.toUpperCase()!==currency||body.quote.toUpperCase()!=='KRW'||!Number.isFinite(body.rate)||body.rate<=0)throw Error('fx');rate={currency,krwPerUnit:body.rate,referenceDate:body.date,fetchedAt:now()};}
+  const rate=await requestRate(currency);
   data.rates[currency]=rate;await save();render();toast(t('Reference rate updated','기준환율을 갱신했어요'));
 }
 modal.addEventListener('cancel',e=>{if(modal.dataset.locked==='true')e.preventDefault();});
