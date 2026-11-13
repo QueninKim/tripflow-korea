@@ -40,7 +40,7 @@ export function validateMetroPlan(network,plan){
 const stationLabel=(r,id)=>{const s=r.stations[id];return s?`${s.ko}${s.en?' · '+s.en:''}`:id;};
 export function metroSummary(network,plan){
   const {region:r,paths}=validateMetroPlan(network,plan);
-  return [r.ko+' / '+r.en,...plan.legs.map(([id,a,b],i)=>{const l=r.lines.find(l=>l.id===id);const next=paths[i][1];return `${l.ko} / ${l.en}: ${stationLabel(r,a)} → ${stationLabel(r,b)} (${stationLabel(r,next)} 방면 / towards; ${paths[i].length-1} ${paths[i].length===2?'stop':'stops'})`;})].join('\n');
+  return [r.ko+' / '+r.en,...plan.legs.map(([id,a,b],i)=>{const l=r.lines.find(l=>l.id===id);const next=paths[i][1];return `${l.ko} / ${l.en}: ${stationLabel(r,a)} → ${stationLabel(r,b)} (${stationLabel(r,next)} 방면 / towards; ${paths[i].length-1} ${paths[i].length===2?'stop':'stops'})`;}),...(metroTimingText(plan.timing)?[metroTimingText(plan.timing)]:[])].join('\n');
 }
 
 const graphCache=new WeakMap();
@@ -109,4 +109,21 @@ export function routeContainsTransfers(legs,vias=[]){
   let index=0;
   for(let i=1;i<legs.length;i++)if(legs[i-1][2]===legs[i][1]&&legs[i-1][0]!==legs[i][0]&&legs[i][1]===vias[index])index++;
   return index===vias.length;
+}
+
+export function metroTimingText(timing){
+  if(timing?.v!==1||!['auto','manual'].includes(timing.mode)||!Number.isInteger(timing.minutes)||timing.minutes<0||timing.minutes>2880)return '';
+  return timing.mode==='auto'?`⏱ 자동 예상 ${timing.minutes}분 / Auto estimate ${timing.minutes} min`:`⏱ 직접 입력 ${timing.minutes}분 / Entered ${timing.minutes} min`;
+}
+export function isAutoMetroTime(stop){
+  const timing=readMetroNote(stop?.note).plan?.timing;
+  return stop?.mode==='transit'&&timing?.v===1&&timing.mode==='auto'&&Number.isInteger(timing.minutes)&&timing.minutes>0&&timing.minutes<=2880&&stop.travelMinutes===timing.minutes;
+}
+export function setMetroManualTime(note,minutes){
+  const parsed=readMetroNote(note);if(!parsed.plan)return note;
+  if(minutes!==null&&(!Number.isInteger(minutes)||minutes<0||minutes>2880))throw Error('invalid-time');
+  const plan={...parsed.plan,timing:{v:1,mode:'manual',minutes}};
+  const plainSummary=parsed.summary.split('\n').filter(line=>!line.startsWith('⏱ ')).join('\n');
+  const text=metroTimingText(plan.timing);
+  return mergeMetroNote(parsed.note,plan,plainSummary+(text?'\n'+text:''));
 }
