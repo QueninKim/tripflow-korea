@@ -1,13 +1,13 @@
-import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState} from './core.js?v=web-1';
+import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState} from './core.js?v=web-2';
 
-const VERSION='web-1';
+const VERSION='web-2';
 const native=!!window.webkit?.messageHandlers?.tripflow;
 const bridge=(command,payload={})=>window.webkit.messageHandlers.tripflow.postMessage({command,...payload});
 const $=s=>document.querySelector(s);
 const root=$('#app'),modal=$('#modal');
 let data,catalog=[],tab='plan',dayIndex=0,query='',area='대한민국',results=[],searching=false,searchError='',searched=false;
 let generation=0,debounce,toastTimer,saveQueue=Promise.resolve(),saveFailed=false,revision=0;
-let lastSearchAt=0,abortSearch;
+let lastSearchAt=0,abortSearch,activeSearchKey;
 const cache=new Map();
 const areas=[['대한민국','All Korea'],['서울','Seoul'],['부산','Busan'],['제주','Jeju'],['강원','Gangwon'],['경기','Gyeonggi'],['인천','Incheon'],['대구','Daegu'],['대전','Daejeon'],['광주','Gwangju'],['울산','Ulsan'],['세종','Sejong'],['충북','Chungbuk'],['충남','Chungnam'],['전북','Jeonbuk'],['전남','Jeonnam'],['경북','Gyeongbuk'],['경남','Gyeongnam']];
 const categories=[['관광명소','Attractions','⌂'],['음식점','Restaurants','♧'],['카페','Cafés','☕'],['숙소','Hotels','⌑'],['박물관','Museums','▥'],['공원','Parks','♧'],['전통시장','Markets','▤'],['해변','Beaches','≈']];
@@ -57,7 +57,7 @@ function planPage(){
 }
 function placeCard(p,live=false){return `<button class="place-card" data-action="place" data-id="${h(p.id)}" ${live?'data-live="true"':''}><span class="place-icon" aria-hidden="true">${icon(p.category)}</span><span><strong>${h(placeName(p))}</strong>${p.koreanName&&p.koreanName!==p.name?`<small>${h(data.language==='ko'?p.name:p.koreanName)}</small>`:''}<small>${h(p.address)}</small></span><span class="add" aria-hidden="true">⊕</span></button>`;}
 function explorePage(){
-  return `<div class="intro"><div class="eyebrow">FOLLOW YOUR CURIOSITY</div><h1>${t('Where to next?','다음은 어디로 갈까요?')}</h1><p>${t('Palaces, cafés, quiet corners. Search a place, an address or a little inspiration.','여행지부터 카페, 동네 골목까지. 장소명이나 주소를 크게, 편하게 검색하세요.')}</p></div><form id="search-form" class="search-box"><span aria-hidden="true" style="font-size:24px;color:var(--teal)">⌕</span><input id="placeSearchField" name="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="${t('Place, address, café…','장소명, 주소, 카페…')}" aria-label="${t('Search places','장소 검색')}" value="${h(query)}"><button type="submit" aria-label="${t('Search','검색')}">→</button></form><div class="search-options row between"><label><span class="sr-only">${t('Area','지역')}</span><select id="searchAreaPicker" aria-label="${t('Search area','검색 지역')}">${areas.map(([ko,en])=>`<option value="${ko}" ${ko===area?'selected':''}>${t(en,ko)}</option>`).join('')}</select></label><small>${native?t('Searches as you type','입력하면 자동 검색'):t('Press Search to explore','검색 버튼을 눌러 찾아보세요')}</small></div><div class="chips">${categories.map(([ko,en])=>btn('category',t(en,ko),query===t(en,ko)?'active':'',`data-query="${t(en,ko)}"`)).join('')}</div><div id="search-results">${searchResults()}</div><p class="note" style="margin-top:20px">${native?t('Live results from Apple Maps, beyond the ten offline starter places. Coverage varies by area.','기본 장소 10곳 외에 Apple 지도에서 실제 장소를 검색합니다. 지역에 따라 제공 정보가 다릅니다.'):t('Web search: Photon / © OpenStreetMap contributors. iPhone app search: Apple Maps.','웹 검색: Photon / © OpenStreetMap 기여자. 아이폰 앱 검색: Apple 지도.')}</p>`;
+  return `<div class="intro"><div class="eyebrow">FOLLOW YOUR CURIOSITY</div><h1>${t('Where to next?','다음은 어디로 갈까요?')}</h1><p>${t('Palaces, cafés, quiet corners. Search a place, an address or a little inspiration.','여행지부터 카페, 동네 골목까지. 장소명이나 주소를 크게, 편하게 검색하세요.')}</p></div><form id="search-form" class="search-box"><span aria-hidden="true" style="font-size:24px;color:var(--teal)">⌕</span><input id="placeSearchField" name="q" type="search" autocomplete="off" enterkeyhint="search" placeholder="${t('Place, address, café…','장소명, 주소, 카페…')}" aria-label="${t('Search places','장소 검색')}" value="${h(query)}"><button type="submit" aria-label="${t('Search','검색')}">→</button></form><div class="search-options row between"><label><span class="sr-only">${t('Area','지역')}</span><select id="searchAreaPicker" aria-label="${t('Search area','검색 지역')}">${areas.map(([ko,en])=>`<option value="${ko}" ${ko===area?'selected':''}>${t(en,ko)}</option>`).join('')}</select></label><small>${native?t('Searches as you type','입력하면 자동 검색'):t('Press Search to explore','검색 버튼을 눌러 찾아보세요')}</small></div><div class="chips">${categories.map(([ko,en])=>btn('category',t(en,ko),query===t(en,ko)?'active':'',`data-query="${t(en,ko)}"`)).join('')}</div><div id="search-results">${searchResults()}</div><p class="note" style="margin-top:20px">${native?t('Live Apple Maps results, with Photon / OpenStreetMap as a fallback. Search goes beyond the ten offline starter places.','기본 장소 10곳 외에도 Apple 지도에서 검색하며, 조회가 어려우면 Photon / © OpenStreetMap 기여자 검색으로 연결합니다.'):t('Web search: Photon / © OpenStreetMap contributors. iPhone app search: Apple Maps.','웹 검색: Photon / © OpenStreetMap 기여자. 아이폰 앱 검색: Apple 지도.')}</p>`;
 }
 function searchResults(){
   const starter=catalog.filter(p=>!query||`${p.name} ${p.koreanName} ${p.address}`.toLowerCase().includes(query.toLowerCase()));
@@ -65,28 +65,35 @@ function searchResults(){
 }
 function updateSearch(){const el=$('#search-results');if(el)el.innerHTML=searchResults();}
 async function search(){
-  clearTimeout(debounce);const term=query.trim();const token=++generation;
+  clearTimeout(debounce);const term=query.trim();const key=area+'|'+term+'|'+data.language;
+  if(searching&&activeSearchKey===key)return;
+  const token=++generation;
   abortSearch?.abort();
   if(!term){results=[];searching=false;searched=false;searchError='';updateSearch();return;}
-  const key=area+'|'+term+'|'+data.language;
   if(cache.has(key)){results=cache.get(key);searched=true;searching=false;updateSearch();return;}
   if(!native&&Date.now()-lastSearchAt<1500){searchError=t('Please wait a moment before searching again.','잠시 후 다시 검색해주세요.');updateSearch();return;}
-  lastSearchAt=Date.now();searching=true;searchError='';results=[];updateSearch();
+  lastSearchAt=Date.now();activeSearchKey=key;searching=true;searchError='';results=[];updateSearch();
   try{
     let places;
-    if(native)places=await bridge('search',{query:term,area});
-    else{
-      abortSearch=new AbortController();
-      const u=new URL('https://photon.komoot.io/api/');
-      u.search=new URLSearchParams({q:(area==='대한민국'?'':area+' ')+term,countrycode:'KR',bbox:'124,33,132,39',limit:'20',lang:data.language==='ko'?'default':'en'});
-      const response=await fetch(u,{signal:abortSearch.signal});if(!response.ok)throw Error('search');
-      const body=await response.json();
-      places=body.features.filter(f=>f.properties.name&&f.geometry.type==='Point'&&f.geometry.coordinates[0]>=124&&f.geometry.coordinates[0]<=132&&f.geometry.coordinates[1]>=33&&f.geometry.coordinates[1]<=39).map(f=>({id:uuid(),name:f.properties.name,koreanName:/[가-힣]/.test(f.properties.name)?f.properties.name:'',address:[f.properties.state,f.properties.city,f.properties.street,f.properties.housenumber].filter(Boolean).join(' '),longitude:f.geometry.coordinates[0],latitude:f.geometry.coordinates[1],category:'Place'}));
+    if(native){
+      let deadline;
+      try{places=await Promise.race([bridge('search',{query:term,area}),new Promise((_,reject)=>{deadline=setTimeout(()=>reject(Error('timeout')),14000);})]);}
+      catch{if(token!==generation)return;await bridge('cancelSearch').catch(()=>{});places=await photonSearch(term);}
+      finally{clearTimeout(deadline);}
     }
+    else places=await photonSearch(term);
     if(token!==generation)return;
     results=places;cache.set(key,places);if(cache.size>20)cache.delete(cache.keys().next().value);
   }catch(e){if(token!==generation||e.name==='AbortError')return;searchError=t('Map search is unavailable. Try again, or choose an offline place.','지도 검색을 사용할 수 없습니다. 다시 시도하거나 기본 장소를 선택해주세요.');}
-  finally{if(token===generation){searching=false;searched=true;updateSearch();}}
+  finally{if(token===generation){activeSearchKey=null;searching=false;searched=true;updateSearch();}}
+}
+async function photonSearch(term){
+  abortSearch=new AbortController();
+  const u=new URL('https://photon.komoot.io/api/');
+  u.search=new URLSearchParams({q:(area==='대한민국'?'':area+' ')+term,countrycode:'KR',bbox:'124,33,132,39',limit:'20',lang:data.language==='ko'?'default':'en'});
+  const response=await fetch(u,{signal:abortSearch.signal});if(!response.ok)throw Error('search');
+  const body=await response.json();
+  return body.features.filter(f=>f.properties.name&&f.geometry.type==='Point'&&f.geometry.coordinates[0]>=124&&f.geometry.coordinates[0]<=132&&f.geometry.coordinates[1]>=33&&f.geometry.coordinates[1]<=39).map(f=>({id:uuid(),name:f.properties.name,koreanName:/[가-힣]/.test(f.properties.name)?f.properties.name:'',address:[f.properties.state,f.properties.city,f.properties.street,f.properties.housenumber].filter(Boolean).join(' '),longitude:f.geometry.coordinates[0],latitude:f.geometry.coordinates[1],category:'Place'}));
 }
 function budgetPage(){
   const tr=trip();if(!tr)return `<div class="empty">${t('Create a trip to track expenses.','여행을 만든 뒤 경비를 기록하세요.')}${btn('newTrip',t('Create a trip','여행 만들기'),'primary')}</div>`;
