@@ -40,15 +40,19 @@ function decimalRatio(value) {
   else denominator = 10n ** BigInt(-exponent);
   return [numerator,denominator];
 }
+function rateRatio(rate,unit) {
+  if (typeof rate === 'string' && !/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,8})?$/.test(rate.trim())) throw Error('invalid-rate');
+  const rateText = String(rate).trim().replaceAll(',','');
+  if (!Number.isFinite(Number(rateText)) || Number(rateText) <= 0 || Number(rateText) > 1e9 || ![1,100].includes(Number(unit))) throw Error('invalid-rate');
+  const [numerator,denominator]=decimalRatio(rateText);
+  return [numerator,denominator*BigInt(unit)];
+}
 /// Keep KRW budgets integral and round exactly once, half up, after conversion.
 export function convertedBudget(raw, currency, rate = 1, unit = 1) {
   const amount = budgetAmount(raw,currency);
   if (currency === 'KRW') { rate = 1; unit = 1; }
-  if (typeof rate === 'string' && !/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,8})?$/.test(rate.trim())) throw Error('invalid-rate');
-  const rateText = String(rate).trim().replaceAll(',','');
-  if (!Number.isFinite(Number(rateText)) || Number(rateText) <= 0 || Number(rateText) > 1e9 || ![1,100].includes(Number(unit))) throw Error('invalid-rate');
-  const [a,b] = decimalRatio(amount), [c,d] = decimalRatio(rateText);
-  const denominator = b*d*BigInt(unit), numerator = a*c;
+  const [a,b] = decimalRatio(amount), [c,d] = rateRatio(rate,unit);
+  const denominator = b*d, numerator = a*c;
   const rounded = (2n*numerator + denominator)/(2n*denominator);
   if (rounded > 1000000000n) throw Error('budget-limit');
   return Number(rounded);
@@ -58,6 +62,44 @@ export function budgetTotal(current, converted, adding) {
   const total = adding ? current + converted : converted;
   if (!Number.isSafeInteger(total) || total < 0 || total > 1000000000) throw Error('budget-limit');
   return total;
+}
+export function convertedExpense(raw,inputCurrency,rateCurrency='KRW',rate=1,unit=1) {
+  const originalAmount=budgetAmount(raw,inputCurrency);
+  if (!budgetCurrencies.includes(rateCurrency) || (inputCurrency!=='KRW'&&rateCurrency!==inputCurrency)) throw Error('invalid-rate');
+  const amountKRW=convertedBudget(originalAmount,inputCurrency,rate,unit);
+  if (amountKRW<1) throw Error('expense-minimum');
+  let foreignAmount;
+  if (rateCurrency==='KRW') foreignAmount=amountKRW;
+  else {
+    const [numerator,denominator]=rateRatio(rate,unit);
+    if(inputCurrency!=='KRW') foreignAmount=Number(originalAmount);
+    else {
+      const scale=rateCurrency==='JPY'?1n:100n;
+      const n=BigInt(amountKRW)*denominator*scale;
+      const minor=(2n*n+numerator)/(2n*numerator);
+      if(minor>BigInt(Number.MAX_SAFE_INTEGER)) throw Error('invalid-rate');
+      foreignAmount=Number(minor)/Number(scale);
+    }
+  }
+  return {amountKRW,originalAmount,originalCurrency:inputCurrency,rateCurrency,foreignAmount};
+}
+// Versioned keys preserve the original amount alongside an FXRate snapshot in
+// the installed native schema. The native app retains arbitrary rate keys.
+export function expenseRateKey(id,quote) {
+  if(!['manual','latest'].includes(quote.source)||![1,100].includes(quote.unit))throw Error('invalid-rate');
+  return `expense-fx-v1:${id.toUpperCase()}:${quote.originalCurrency}:${quote.originalAmount}:${quote.source}:${quote.unit}`;
+}
+export function expenseRateEntries(rates) {
+  const entries=new Map();
+  for(const [key,rate] of Object.entries(rates)) {
+    const parts=key.split(':');
+    if(parts.length!==6||parts[0]!=='expense-fx-v1'||!['manual','latest'].includes(parts[4])||![1,100].includes(Number(parts[5])))continue;
+    try {
+      const converted=convertedExpense(parts[3],parts[2],rate.currency,rate.krwPerUnit,1);
+      entries.set(parts[1].toUpperCase(),{...converted,rate,key,source:parts[4],unit:Number(parts[5])});
+    }catch{}
+  }
+  return entries;
 }
 export function sampleState(catalog,lang='en') {
   const trip={id:uuid(),title:'A little Seoul escape',city:'Seoul',startDate:now(),budgetKRW:450000,expenses:[],isSample:true,days:Array.from({length:3},()=>({id:uuid(),startMinutes:540,stops:[]}))};
