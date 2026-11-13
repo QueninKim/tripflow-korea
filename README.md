@@ -35,3 +35,21 @@ Expense entry now supports the purchased rate as well as the latest reference ra
 The stored KRW charge, original input amount and rate snapshot stay fixed when general reference rates refresh. Plain KRW expenses still work without a rate or a network request. Zero / negative / malformed rates and converted charges below one won are blocked. Saving failures preserve the previous expense list.
 
 The installed native schema is unchanged. `expense-fx-v1:` entries in the on-device rates dictionary retain each expense's original currency/amount, source and unit alongside its FXRate snapshot. Preserve these durable entries during cache maintenance. Web deletion removes the corresponding snapshot. Receipt-message fingerprints remain unchanged for duplicate detection. JSON backup and native round-trip compatibility were verified.
+
+## Subway maps and manual routes · web-6
+
+Open **Subway maps** in My trip or Essentials, or **Subway** on an itinerary movement. Choose the Capital area, Busan area, Daegu, Daejeon or Gwangju. The 35 line views contain 936 station identities (transfer stations share an identity). The diagrams show station order and transfer links in an original vertical layout; they do not represent geographic position or distance. Full official network maps are linked alongside them.
+
+Korean and English station search, departure/arrival selection by tapping the diagram or a station list, branch handling, Line 2 direction choices, and the one-way Eungam loop are supported. Add up to eight connected legs and save to a day's incoming movement. Only lines serving the previous arrival station are offered for the next leg. Add a pending leg before saving. Enter a total time including walking, waiting and transfers, or leave it unknown. No live timetable, express/local routing, fare calculation or shortest cross-network journey is claimed.
+
+Route metadata and a readable bilingual summary use a versioned block at the end of the destination stop's existing `note` field. Ordinary notes remain separately editable, and the combined field stays within the installed app's 2,000-character limit. This preserves bridge version 1 and needs no new TestFlight build. Reordering or removing a preceding place marks the route for review; selecting another travel mode marks it inactive. Sharing and backup retain the route, and native JSON round-trip compatibility was checked.
+
+Station names, line membership and ordering were checked on 2026-11-14 against the following operator sources. No operator map artwork, schematic coordinates, schedules, fares, scripts, credentials or session cookies are bundled. The dataset is a checked snapshot and requires maintenance as service changes. English source gaps are filled with display romanizations.
+
+- Capital area: [Seoul Metro cyberstation](https://www.seoulmetro.co.kr/kr/cyberStation.do), its Korean/English public line-data feeds, and [Incheon Transit map](https://www.ictr.or.kr/main/railway/guidance/map.jsp). GTX-A's two displayed operating sections are kept disconnected.
+- Busan area: [Humetro cyberstation](https://data.humetro.busan.kr/homepage/cyberstation/map.do), including Lines 1–4, Busan–Gimhae LRT and Donghae Line. Same-name stations without a displayed transfer are not merged.
+- Daegu: [DTRO cyberstation](https://www.dtro.or.kr/front/dtro/cyberstation/station/cyberstation.do) and its public station lookup, including the Hayang extension.
+- Daejeon: [Daejeon Transportation map](https://www.djtc.kr/kor/page.do?menuIdx=39), Line 1.
+- Gwangju: [Gwangju Transit cyberstation](https://www.grtc.co.kr/cyber/), operating Line 1; construction-only lines are excluded.
+
+Run `npm test` from this source folder. Tests cover conversion behavior, branch/loop paths, transfer continuity, note preservation, storage limits and stale route detection.
