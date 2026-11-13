@@ -1,6 +1,6 @@
-import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState,budgetCurrencies,budgetAmount,convertedBudget,budgetTotal} from './core.js?v=web-4';
+import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState,budgetCurrencies,budgetAmount,convertedBudget,budgetTotal,convertedExpense,expenseRateKey,expenseRateEntries} from './core.js?v=web-5';
 
-const VERSION='web-4';
+const VERSION='web-5';
 const native=!!window.webkit?.messageHandlers?.tripflow;
 const bridge=(command,payload={})=>window.webkit.messageHandlers.tripflow.postMessage({command,...payload});
 const $=s=>document.querySelector(s);
@@ -10,6 +10,7 @@ let generation=0,debounce,toastTimer,saveQueue=Promise.resolve(),saveFailed=fals
 let lastSearchAt=0,abortSearch,activeSearchKey;
 const cache=new Map();
 let budgetDraft=null,budgetTimer;
+let expenseDraft=null,expenseTimer;
 const rateRequests=new Map();
 const areas=[['대한민국','All Korea'],['서울','Seoul'],['부산','Busan'],['제주','Jeju'],['강원','Gangwon'],['경기','Gyeonggi'],['인천','Incheon'],['대구','Daegu'],['대전','Daejeon'],['광주','Gwangju'],['울산','Ulsan'],['세종','Sejong'],['충북','Chungbuk'],['충남','Chungnam'],['전북','Jeonbuk'],['전남','Jeonnam'],['경북','Gyeongbuk'],['경남','Gyeongnam']];
 const categories=[['관광명소','Attractions','⌂'],['음식점','Restaurants','♧'],['카페','Cafés','☕'],['숙소','Hotels','⌑'],['박물관','Museums','▥'],['공원','Parks','♧'],['전통시장','Markets','▤'],['해변','Beaches','≈']];
@@ -99,8 +100,8 @@ async function photonSearch(term){
 }
 function budgetPage(){
   const tr=trip();if(!tr)return `<div class="empty">${t('Create a trip to track expenses.','여행을 만든 뒤 경비를 기록하세요.')}${btn('newTrip',t('Create a trip','여행 만들기'),'primary')}</div>`;
-  const spent=tr.expenses.reduce((sum,e)=>sum+e.amountKRW,0),percent=tr.budgetKRW?Math.min(100,spent/tr.budgetKRW*100):0;
-  return `<div class="intro"><div class="eyebrow">MORE MEMORIES, LESS MATH</div><h1>${t('A little peace of mind.','여행 경비, 한눈에.')}</h1><p>${h(title(tr))} · ${t('All expenses stay on your device.','경비는 이 기기에 저장됩니다.')}</p></div><div class="budget-grid"><div class="panel summary-card"><div class="eyebrow">${t('REMAINING','남은 예산')}</div><div class="money">${krw(tr.budgetKRW-spent)}</div><small>${h(homeMoney(tr.budgetKRW-spent))}</small><div class="budget-bar"><span style="width:${percent}%"></span></div><small>${t('Budget','전체 예산')} ${krw(tr.budgetKRW)}</small><div style="margin-top:17px">${btn('addBudget',t('＋ Add budget','＋ 예산 추가'),'primary')}</div></div><div class="panel"><div class="eyebrow">${t('SPENT SO FAR','지금까지 지출')}</div><div class="money">${krw(spent)}</div><p class="muted" style="margin-top:8px">${tr.expenses.length}${t(' expenses recorded','건 기록')}</p><div class="row wrap" style="margin-top:16px">${btn('newExpense',t('＋ Record expense','＋ 경비 기록'),'primary')}${btn('importExpense',t('Paste payment message','결제 메시지 붙여넣기'),'text-btn')}</div></div></div>${budgetEntryLabel(tr)}<div class="section-heading"><h2>${t('The little things add up.','차곡차곡 모인 기록')}</h2>${btn('editTrip',t('Edit budget','예산 수정'),'text-btn')}</div><div class="panel">${tr.expenses.length?[...tr.expenses].reverse().map(e=>`<article class="expense"><span class="place-icon" aria-hidden="true" style="height:44px;width:44px;font-size:20px">${e.category==='Food & drink'?'☕':'▱'}</span><div><strong>${h(e.merchant)}</strong><small>${h(catName(e.category))} · ${t('Day ','')+(e.dayIndex+1)+t('','일차')}</small></div><div class="amount">${krw(e.amountKRW)}<small>${h(homeMoney(e.amountKRW))}</small></div><button class="delete" data-action="deleteExpense" data-id="${e.id}" aria-label="${t('Delete expense','경비 삭제')}">×</button></article>`).join(''):`<div class="empty"><p>${t('Your first coffee, train ride or market lunch. Record it here.','첫 커피, 기차표, 시장 점심부터 기록해보세요.')}</p></div>`}</div>`;
+  const spent=tr.expenses.reduce((sum,e)=>sum+e.amountKRW,0),percent=tr.budgetKRW?Math.min(100,spent/tr.budgetKRW*100):0,expenseRates=expenseRateEntries(data.rates);
+  return `<div class="intro"><div class="eyebrow">MORE MEMORIES, LESS MATH</div><h1>${t('A little peace of mind.','여행 경비, 한눈에.')}</h1><p>${h(title(tr))} · ${t('All expenses stay on your device.','경비는 이 기기에 저장됩니다.')}</p></div><div class="budget-grid"><div class="panel summary-card"><div class="eyebrow">${t('REMAINING','남은 예산')}</div><div class="money">${krw(tr.budgetKRW-spent)}</div><small>${h(homeMoney(tr.budgetKRW-spent))}</small><div class="budget-bar"><span style="width:${percent}%"></span></div><small>${t('Budget','전체 예산')} ${krw(tr.budgetKRW)}</small><div style="margin-top:17px">${btn('addBudget',t('＋ Add budget','＋ 예산 추가'),'primary')}</div></div><div class="panel"><div class="eyebrow">${t('SPENT SO FAR','지금까지 지출')}</div><div class="money">${krw(spent)}</div><p class="muted" style="margin-top:8px">${tr.expenses.length}${t(' expenses recorded','건 기록')}</p><div class="row wrap" style="margin-top:16px">${btn('newExpense',t('＋ Record expense','＋ 경비 기록'),'primary')}${btn('importExpense',t('Paste payment message','결제 메시지 붙여넣기'),'text-btn')}</div></div></div>${budgetEntryLabel(tr)}<div class="section-heading"><h2>${t('The little things add up.','차곡차곡 모인 기록')}</h2>${btn('editTrip',t('Edit budget','예산 수정'),'text-btn')}</div><div class="panel">${tr.expenses.length?[...tr.expenses].reverse().map(e=>`<article class="expense"><span class="place-icon" aria-hidden="true" style="height:44px;width:44px;font-size:20px">${e.category==='Food & drink'?'☕':'▱'}</span><div><strong>${h(e.merchant)}</strong><small>${h(catName(e.category))} · ${t('Day ','')+(e.dayIndex+1)+t('','일차')}</small></div><div class="amount">${krw(e.amountKRW)}${savedExpenseFX(e,expenseRates)}</div><button class="delete" data-action="deleteExpense" data-id="${e.id}" aria-label="${t('Delete expense','경비 삭제')}">×</button></article>`).join(''):`<div class="empty"><p>${t('Your first coffee, train ride or market lunch. Record it here.','첫 커피, 기차표, 시장 점심부터 기록해보세요.')}</p></div>`}</div>`;
 }
 function toolsPage(){
   const rate=data.rates[data.homeCurrency];
@@ -224,8 +225,94 @@ function editStopModal(id){
   openModal(`${modalTop(h(placeName(s.place)))}<form id="stop-form" data-id="${id}" class="form-grid"><label>${t('Stay (minutes)','머무는 시간 (분)')}<input type="number" name="stay" min="0" max="1440" step="1" value="${s.stayMinutes}" required></label><label>${t('Travel from previous stop','이전 장소에서 이동')}<select name="mode">${['transit','walking','driving'].map(m=>`<option value="${m}" ${m===s.mode?'selected':''}>${modeName(m)}</option>`).join('')}</select></label><label>${t('Travel time (minutes, leave blank if unknown)','이동시간 (분, 미정이면 비우세요)')}<input type="number" name="travel" min="0" max="2880" step="1" value="${s.travelMinutes??''}"></label><label>${t('Notes','메모')}<textarea name="note" maxlength="2000">${h(s.note)}</textarea></label><button type="submit" class="primary">${t('Save','저장')}</button></form>${btn('removeStop',t('Remove from itinerary','일정에서 삭제'),'text-btn',`data-id="${id}" style="color:#a73a2a;margin-top:15px"`)}`);
 }
 function expenseModal(proposal=null){
-  openModal(`${modalTop(t('Record an expense','경비 기록'))}${proposal?`<p class="note" style="margin-bottom:18px">${t('Review the proposed amount before saving.','금액을 확인한 뒤 저장해주세요.')}</p>`:''}<form id="expense-form" class="form-grid"><label>${t('Merchant / description','사용처·내용')}<input name="merchant" id="merchantField" maxlength="120" required placeholder="${t('Lunch in Seoul','서울에서 점심')}"></label><label>${t('Amount (KRW)','금액 (원)')}<input type="number" name="amount" id="amountField" inputmode="numeric" min="1" max="1000000000" step="1" required value="${proposal?.amountKRW||''}"></label><div class="field-pair"><label>${t('Category','분류')}<select name="category">${['Food & drink','Transport','Stay','Shopping','Activities','Other'].map(c=>`<option value="${c}">${h(catName(c))}</option>`).join('')}</select></label><label>${t('Day','여행일')}<select name="day">${trip().days.map((_,i)=>`<option value="${i}" ${i===dayIndex?'selected':''}>${t('Day ','')+(i+1)+t('','일차')}</option>`).join('')}</select></label></div>${proposal?`<input type="hidden" name="fingerprint" value="${h(proposal.fingerprint)}">`:''}<button class="primary" type="submit">${t('Save','저장')}</button></form>`);
+  const tr=trip();if(!tr)return;
+  const purchased=data.rates['budget-manual:'+tr.id];
+  const rateCurrency=purchased?.currency||data.homeCurrency;
+  openModal(`${modalTop(t('Record an expense','경비 기록'))}${proposal?`<p class="note" style="margin-bottom:18px">${t('Review the proposed amount before saving.','금액을 확인한 뒤 저장해주세요.')}</p>`:''}<form id="expense-form" class="form-grid" data-trip-id="${tr.id}"><label>${t('Merchant / description','사용처·내용')}<input name="merchant" id="merchantField" maxlength="120" required placeholder="${t('Lunch in Seoul','서울에서 점심')}"></label><fieldset class="budget-inputs"><legend>${t('Expense amount','지출 금액')}</legend><div class="field-pair"><label>${t('Currency paid','결제 금액의 통화')}<select name="expenseCurrency" id="expenseCurrency">${budgetCurrencies.map(c=>`<option value="${c}">${c}</option>`).join('')}</select></label><label>${t('Amount paid','결제 금액')}<input name="amount" id="amountField" inputmode="decimal" autocomplete="off" maxlength="32" required value="${proposal?.amountKRW||''}" placeholder="${t('Enter amount','금액 입력')}"></label></div><label>${t('Exchange rate to apply','적용할 환율')}<select name="expenseRateMode" id="expenseRateMode"><option value="none">${t('Record KRW only','환산 없이 원화만 저장')}</option><option value="manual" ${purchased?'selected':''}>${t('My purchased exchange rate','내가 구매한 환율')}</option><option value="latest">${t('Fetch latest reference rate','최신 환율 조회')}</option></select></label><label id="expense-rate-currency-field">${t('Currency to show alongside KRW','함께 환산할 통화')}<select name="expenseRateCurrency" id="expenseRateCurrency">${budgetCurrencies.filter(c=>c!=='KRW').map(c=>`<option ${c===rateCurrency?'selected':''}>${c}</option>`).join('')}</select></label><div id="expense-manual-fields" class="stack" hidden><div class="field-pair"><label>${t('Currency units','환율 기준 단위')}<select name="expenseRateUnit" id="expenseRateUnit"><option value="1">1 ${h(rateCurrency)}</option><option value="100">100 ${h(rateCurrency)}</option></select></label><label>${t('Price in KRW','위 금액의 원화 가격')}<input name="expensePurchasedRate" id="expensePurchasedRate" inputmode="decimal" autocomplete="off" maxlength="24" placeholder="${t('e.g. 1,350','예: 1,350')}"></label></div><p class="note">${t('A saved purchased rate is filled in when available. You can change it for this expense.','저장된 구매 환율이 있으면 불러옵니다. 이번 지출에 맞게 수정할 수 있어요.')}</p></div>${btn('refreshExpenseRate',t('Refresh latest rate','최신 환율 다시 조회'),'text-btn',`id="refreshExpenseRate" hidden`)}<div id="expenseQuote" class="budget-quote" role="status" aria-live="polite" aria-atomic="true"></div><p class="note">${t('The KRW expense and its applied rate are fixed when saved. Purchased rates do not require a date.','원화 지출액과 적용 환율은 저장 시 고정됩니다. 구매 환율에는 날짜가 필요하지 않습니다.')}</p></fieldset><div class="field-pair"><label>${t('Category','분류')}<select name="category">${['Food & drink','Transport','Stay','Shopping','Activities','Other'].map(c=>`<option value="${c}">${h(catName(c))}</option>`).join('')}</select></label><label>${t('Day','여행일')}<select name="day">${tr.days.map((_,i)=>`<option value="${i}" ${i===dayIndex?'selected':''}>${t('Day ','')+(i+1)+t('','일차')}</option>`).join('')}</select></label></div>${proposal?`<input type="hidden" name="fingerprint" value="${h(proposal.fingerprint)}">`:''}<button class="primary" type="submit">${t('Save','저장')}</button></form>`);
+  expenseDraft={form:$('#expense-form'),tripID:tr.id,sequence:0,rate:null,quote:null,unit:1};
+  updateExpenseControls({prefill:true});void updateExpensePreview();
 }
+function expenseCurrency(f){return f.elements.expenseCurrency.value==='KRW'?f.elements.expenseRateCurrency.value:f.elements.expenseCurrency.value;}
+function purchasedExpenseRate(currency){
+  const tr=trip();if(!tr)return null;
+  const budget=data.rates['budget-manual:'+tr.id];
+  if(budget?.currency===currency)return {rate:budget,unit:currency==='JPY'?100:1};
+  const entries=expenseRateEntries(data.rates);
+  for(const expense of [...tr.expenses].reverse()){
+    const entry=entries.get(expense.id.toUpperCase());if(entry?.source==='manual'&&entry.rate.currency===currency)return entry;
+  }
+  return null;
+}
+function editableRate(value){return value.toFixed(8).replace(/0+$/,'').replace(/\.$/,'');}
+function updateExpenseControls({prefill=false}={}){
+  const f=expenseDraft?.form;if(!f?.isConnected)return;
+  const paid=f.elements.expenseCurrency.value,mode=f.elements.expenseRateMode;
+  mode.querySelector('option[value="none"]').hidden=paid!=='KRW';
+  mode.querySelector('option[value="none"]').disabled=paid!=='KRW';
+  if(paid!=='KRW'&&mode.value==='none')mode.value='latest';
+  const currency=expenseCurrency(f),manual=mode.value==='manual';
+  f.querySelector('#expense-rate-currency-field').hidden=paid!=='KRW'||mode.value==='none';
+  f.querySelector('#expense-manual-fields').hidden=!manual;
+  f.querySelector('#refreshExpenseRate').hidden=mode.value!=='latest';
+  f.elements.expensePurchasedRate.required=manual;
+  for(const option of f.elements.expenseRateUnit.options)option.textContent=option.value+' '+currency;
+  if(prefill){
+    const saved=purchasedExpenseRate(currency);
+    f.elements.expenseRateUnit.value=String(saved?.unit||(currency==='JPY'?100:1));
+    f.elements.expensePurchasedRate.value=saved?editableRate(saved.rate.krwPerUnit*Number(f.elements.expenseRateUnit.value)):'';
+  }
+  expenseDraft.unit=Number(f.elements.expenseRateUnit.value);
+}
+function expenseFingerprint(f){return ['amount','expenseCurrency','expenseRateMode','expenseRateCurrency','expenseRateUnit','expensePurchasedRate'].map(n=>f.elements[n].value).join('|');}
+function expenseError(error){
+  if(error.message==='expense-minimum')return t('The recorded expense must be at least ₩1.','저장할 지출은 원화로 1원 이상이어야 합니다.');
+  if(error.message==='budget-limit')return t('One expense cannot exceed ₩1,000,000,000.','한 건의 경비는 10억 원까지 입력할 수 있습니다.');
+  return budgetError(error).replace('예산은 변경되지 않았습니다.','경비는 저장되지 않았습니다.').replace('Your budget has not changed.','The expense has not been saved.');
+}
+function currencyMoney(amount,currency){return new Intl.NumberFormat(data.language==='ko'?'ko-KR':'en-US',{style:'currency',currency,currencyDisplay:'code'}).format(amount);}
+async function updateExpensePreview({refresh=false}={}){
+  clearTimeout(expenseTimer);
+  const draft=expenseDraft,f=draft?.form;if(!f?.isConnected||!modal.open)return null;
+  const seq=++draft.sequence,fingerprint=expenseFingerprint(f),paid=f.elements.expenseCurrency.value,source=f.elements.expenseRateMode.value;
+  const display=f.querySelector('#expenseQuote'),submit=f.querySelector('[type="submit"]');
+  draft.quote=null;submit.disabled=true;display.classList.remove('error');
+  if(!f.elements.amount.value.trim()){display.textContent=t('Enter the amount you paid.','결제한 금액을 입력하세요.');return null;}
+  try{
+    let rate,rawRate=1,unit=1,currency=source==='none'?'KRW':expenseCurrency(f);
+    if(source==='none')rate={currency:'KRW',krwPerUnit:1,referenceDate:'',fetchedAt:now()};
+    else if(source==='manual'){
+      rawRate=f.elements.expensePurchasedRate.value.trim();unit=Number(f.elements.expenseRateUnit.value);
+      if(!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,8})?$/.test(rawRate))throw Error('invalid-rate');
+      rate={currency,krwPerUnit:Number(rawRate.replaceAll(',',''))/unit,referenceDate:'',fetchedAt:now()};
+    }else{
+      if(refresh)draft.rate=null;
+      display.textContent=t('Fetching the latest reference rate…','최신 기준환율을 조회하는 중…');
+      rate=!refresh&&draft.rate?.currency===currency?draft.rate:await requestRate(currency);
+      if(expenseDraft!==draft||seq!==draft.sequence||!f.isConnected||!modal.open)return null;
+      draft.rate=rate;rawRate=rate.krwPerUnit;
+    }
+    const converted=convertedExpense(f.elements.amount.value,paid,currency,rawRate,unit);
+    if(expenseDraft!==draft||seq!==draft.sequence||fingerprint!==expenseFingerprint(f))return null;
+    const quote={...converted,rate,source,unit,fingerprint};
+    display.innerHTML=`<small>${t('KRW expense to save','저장할 원화 지출')}</small><strong>${krw(quote.amountKRW)}</strong>${source==='none'?'':`<p>${h(currencyMoney(quote.foreignAmount,currency))}</p><small>${unit} ${h(currency)} = ${h(new Intl.NumberFormat('ko-KR',{maximumFractionDigits:8}).format(rate.krwPerUnit*unit))}${t(' KRW','원')} · ${source==='manual'?t('Purchased rate','구매 환율'):t('Latest reference rate','최신 기준환율')}${source==='latest'?' · '+h(rate.referenceDate):''}</small>`}`;
+    draft.quote=quote;submit.disabled=false;return quote;
+  }catch(error){
+    if(expenseDraft!==draft||seq!==draft.sequence||!f.isConnected)return null;
+    display.textContent=expenseError(error);display.classList.add('error');return null;
+  }
+}
+function savedExpenseFX(expense,entries){
+  try{
+    const entry=entries.get(expense.id.toUpperCase());if(!entry)return `<small>${h(homeMoney(expense.amountKRW))}</small>`;
+    const shown=entry.originalCurrency==='KRW'?convertedExpense(expense.amountKRW,'KRW',entry.rate.currency,entry.rate.krwPerUnit,1).foreignAmount:Number(entry.originalAmount);
+    return `<small>${h(currencyMoney(shown,entry.rate.currency))} · ${entry.source==='manual'?t('Purchased rate','구매 환율'):t('Reference rate','기준환율')}</small><small>${entry.unit} ${h(entry.rate.currency)} = ${h(new Intl.NumberFormat('ko-KR',{maximumFractionDigits:8}).format(entry.rate.krwPerUnit*entry.unit))}${t(' KRW','원')}</small>`;
+  }catch{return `<small>${h(homeMoney(expense.amountKRW))}</small>`;}
+}
+function removeExpenseFX(ids){
+  const wanted=new Set(ids.map(id=>id.toUpperCase()));
+  for(const key of Object.keys(data.rates))if(key.startsWith('expense-fx-v1:')&&wanted.has(key.split(':')[1].toUpperCase()))delete data.rates[key];
+}
+
 function findPlace(id){return results.find(p=>p.id===id)||catalog.find(p=>p.id===id)||trip()?.days.flatMap(d=>d.stops).find(s=>s.place.id===id)?.place;}
 function placeURL(p){return `https://map.kakao.com/link/map/${encodeURIComponent(p.koreanName||p.name)},${p.latitude},${p.longitude}`;}
 function external(url){if(native)return bridge('open',{url});window.open(url,'_blank','noopener');}
@@ -259,7 +346,21 @@ document.addEventListener('input',e=>{
   budgetDraft.quote=null;f.querySelector('[type="submit"]').disabled=true;
   clearTimeout(budgetTimer);budgetTimer=setTimeout(()=>updateBudgetPreview(),300);
 });
+document.addEventListener('input',e=>{
+  const f=e.target.closest('#expense-form');
+  if(!f||expenseDraft?.form!==f||!['amount','expensePurchasedRate'].includes(e.target.name))return;
+  expenseDraft.quote=null;f.querySelector('[type="submit"]').disabled=true;
+  clearTimeout(expenseTimer);expenseTimer=setTimeout(()=>updateExpensePreview(),250);
+});
 document.addEventListener('change',async e=>{
+  const expenseForm=e.target.closest('#expense-form');
+  if(expenseForm&&expenseDraft?.form===expenseForm&&['expenseCurrency','expenseRateMode','expenseRateCurrency','expenseRateUnit'].includes(e.target.name)){
+    if(e.target.name==='expenseRateUnit'){
+      const raw=expenseForm.elements.expensePurchasedRate.value.replaceAll(',',''),oldUnit=expenseDraft.unit,newUnit=Number(e.target.value);
+      if(raw&&Number.isFinite(Number(raw))&&Number(raw)>0)expenseForm.elements.expensePurchasedRate.value=editableRate(Number(raw)*newUnit/oldUnit);
+    }
+    updateExpenseControls({prefill:e.target.name!=='expenseRateUnit'});await updateExpensePreview();
+  }
   const f=e.target.closest('#trip-form,#budget-form');
   if(f&&budgetDraft?.form===f&&['budgetCurrency','budgetRateMode','budgetRateUnit'].includes(e.target.name)){
     if(e.target.name==='budgetCurrency'&&f.elements.budget.dataset.default==='true'){f.elements.budget.value='';f.elements.budget.dataset.default='false';}
@@ -309,7 +410,28 @@ document.addEventListener('submit',async e=>{
     }
     if(f.id==='add-place-form'){const p=findPlace(f.dataset.id);dayIndex=Number(v.get('day'));if(p&&day()){day().stops.push({id:uuid(),place:p,stayMinutes:60,mode:'transit',durationSource:'manual',note:''});toast(t(`Added to Day ${dayIndex+1}`,`${dayIndex+1}일차에 추가했어요`));}}
     if(f.id==='stop-form'){const s=day().stops.find(x=>x.id===f.dataset.id);const travel=String(v.get('travel'));const changed=s.mode!==v.get('mode')||String(s.travelMinutes??'')!==travel;s.stayMinutes=Number(v.get('stay'));s.mode=String(v.get('mode'));s.note=String(v.get('note'));if(changed){if(travel==='')delete s.travelMinutes;else s.travelMinutes=Number(travel);s.durationSource='manual';}}
-    if(f.id==='expense-form'){const amount=Number(v.get('amount')),merchant=String(v.get('merchant')).trim();if(!merchant||!Number.isSafeInteger(amount)||amount<=0||amount>1000000000)return;const fingerprint=v.get('fingerprint');if(fingerprint&&data.trips.flatMap(x=>x.expenses).some(e=>e.sourceFingerprint===fingerprint)){toast(t('This message is already recorded.','이미 기록한 메시지입니다.'));return;}trip().expenses.push({id:uuid(),merchant,amountKRW:amount,category:String(v.get('category')),dayIndex:Number(v.get('day')),createdAt:now(),...(fingerprint?{sourceFingerprint:fingerprint}:{})});}
+    if(f.id==='expense-form'){
+      if(f.dataset.submitting==='true'||expenseDraft?.form!==f)return;
+      f.dataset.submitting='true';
+      const oldQuote=expenseDraft.quote;
+      const quote=await updateExpensePreview({refresh:oldQuote?.source==='latest'&&now()-oldQuote.rate.fetchedAt>60});
+      if(!quote||quote.fingerprint!==expenseFingerprint(f)){delete f.dataset.submitting;return;}
+      const values=new FormData(f),merchant=String(values.get('merchant')).trim();
+      const target=data.trips.find(x=>x.id===f.dataset.tripId),expenseDay=Number(values.get('day'));
+      if(!merchant||!target||!Number.isInteger(expenseDay)||expenseDay<0||expenseDay>=target.days.length){delete f.dataset.submitting;return;}
+      const fingerprint=values.get('fingerprint');
+      if(fingerprint&&data.trips.flatMap(x=>x.expenses).some(e=>e.sourceFingerprint===fingerprint)){
+        delete f.dataset.submitting;toast(t('This message is already recorded.','이미 기록한 메시지입니다.'));return;
+      }
+      const previous=structuredClone(data);
+      const expense={id:uuid(),merchant,amountKRW:quote.amountKRW,category:String(values.get('category')),dayIndex:expenseDay,createdAt:now(),...(fingerprint?{sourceFingerprint:fingerprint}:{})};
+      target.expenses.push(expense);
+      if(quote.source!=='none')data.rates[expenseRateKey(expense.id,quote)]=quote.rate;
+      if(quote.source==='latest')data.rates[quote.rate.currency]=quote.rate;
+      if(await save()){modal.close();render();toast(t('Expense recorded at the selected rate','선택한 환율로 경비를 저장했어요'));}
+      else{data=previous;delete f.dataset.submitting;await updateExpensePreview();}
+      return;
+    }
     if(f.id==='start-form'){const [hours,minutes]=String(v.get('time')).split(':').map(Number);day().startMinutes=hours*60+minutes;}
     if(f.id==='import-form'){
       if(!native){toast(t('Enter the amount manually in the web version.','웹에서는 금액을 직접 입력해주세요.'));return;}
@@ -349,11 +471,12 @@ document.addEventListener('click',async e=>{
     if(a==='removeStop'){day().stops=day().stops.filter(s=>s.id!==id);invalidate(day());await save();modal.close();render();return;}
     if(a==='dayStart'){openModal(`${modalTop(t('Start your day','하루 시작 시간'))}<form id="start-form" class="form-grid"><label>${t('Start time','시작 시간')}<input name="time" type="time" required value="${clock(day().startMinutes)}"></label><button type="submit" class="primary">${t('Save','저장')}</button></form>`);return;}
     if(a==='newExpense'){expenseModal();return;}
+    if(a==='refreshExpenseRate'){await updateExpensePreview({refresh:true});return;}
     if(a==='importExpense'){openModal(`${modalTop(t('Review a payment message','결제 메시지 확인'))}<p class="note" style="margin-bottom:15px">${t('Paste one KRW purchase. The original message is not saved.','원화 결제 메시지 한 건을 붙여넣으세요. 원문은 저장하지 않습니다.')}</p><form id="import-form" class="form-grid"><label>${t('Message','메시지')}<textarea name="message" required maxlength="10000"></textarea></label><button class="primary" type="submit">${t('Review amount','금액 확인')}</button></form>`);return;}
     if(a==='deleteExpense'){openModal(`${modalTop(t('Delete this expense?','이 경비를 삭제할까요?'))}<div class="dialog-actions">${btn('close',t('Cancel','취소'))}${btn('confirmDeleteExpense',t('Delete','삭제'),'danger',`data-id="${id}"`)}</div>`);return;}
-    if(a==='confirmDeleteExpense'){trip().expenses=trip().expenses.filter(x=>x.id!==id);await save();modal.close();render();return;}
+    if(a==='confirmDeleteExpense'){removeExpenseFX([id]);trip().expenses=trip().expenses.filter(x=>x.id!==id);await save();modal.close();render();return;}
     if(a==='deleteTrip'){modal.close();openModal(`${modalTop(t('Delete this trip?','이 여행을 삭제할까요?'))}<p class="note">${t('Its itinerary and expenses will be removed from this device.','이 기기의 여행 일정과 경비가 삭제됩니다.')}</p><div class="dialog-actions">${btn('close',t('Cancel','취소'))}${btn('confirmDeleteTrip',t('Delete','삭제'),'danger')}</div>`);return;}
-    if(a==='confirmDeleteTrip'){const id=trip().id;data.trips=data.trips.filter(x=>x.id!==id);data.selectedTripID=data.trips[0]?.id;dayIndex=0;await save();modal.close();render();return;}
+    if(a==='confirmDeleteTrip'){const id=trip().id;removeExpenseFX(trip().expenses.map(e=>e.id));delete data.rates['budget-manual:'+id];delete data.rates['budget-latest:'+id];data.trips=data.trips.filter(x=>x.id!==id);data.selectedTripID=data.trips[0]?.id;dayIndex=0;await save();modal.close();render();return;}
     if(a==='fx'){await loadFX();return;}
     if(a==='share'){await shareText(exportText());return;}
     if(a==='backup'){await shareText(JSON.stringify(data,null,2),'TripFlow-backup.json');return;}
