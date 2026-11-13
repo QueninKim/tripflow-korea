@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "builtAt": "2026-11-14",
+  "regions": [
+    {
+      "id": "seoul",
+      "ko": "서울",
+      "en": "Seoul",
+      "routes": 718,
+      "stops": 12897,
+      "date": "2026-09-02",
+      "source": {
+        "name": "서울 열린데이터광장 · 서울시버스노선별정류소정보(20260902)",
+        "url": "https://data.seoul.go.kr/dataList/OA-1095/S/1/datasetView.do"
+      },
+      "file": "bus-seoul.json",
+      "numbers": 718,
+      "directions": 718
+    },
+    {
+      "id": "busan",
+      "ko": "부산",
+      "en": "Busan",
+      "routes": 327,
+      "stops": 8525,
+      "date": "2026-11-14",
+      "source": {
+        "name": "부산 버스정보시스템 · 노선별 정류소",
+        "url": "https://bus.busan.go.kr/busanBIMS/StationInfo.asp"
+      },
+      "file": "bus-busan.json",
+      "numbers": 327,
+      "directions": 327
+    },
+    {
+      "id": "daegu",
+      "ko": "대구권 · 경산·인근",
+      "en": "Daegu area",
+      "routes": 495,
+      "stops": 5214,
+      "date": "2026-11-14",
+      "source": {
+        "name": "대구광역시 시내버스 노선 안내 · 노선별 정·역방향 정류장",
+        "url": "https://businfo.daegu.go.kr/ba/route/route.do?act=main&layout=mainNew"
+      },
+      "file": "bus-daegu.json",
+      "numbers": 164,
+      "directions": 495
+    },
+    {
+      "id": "daejeon",
+      "ko": "대전권 · 세종·인근",
+      "en": "Daejeon area",
+      "routes": 279,
+      "stops": 3453,
+      "date": "2026-11-14",
+      "source": {
+        "name": "대전교통정보센터 · 노선별 상·하행 정류소",
+        "url": "https://traffic.daejeon.go.kr/bus/"
+      },
+      "file": "bus-daejeon.json",
+      "numbers": 138,
+      "directions": 279
+    },
+    {
+      "id": "gwangju",
+      "ko": "광주",
+      "en": "Gwangju",
+      "routes": 127,
+      "stops": 2907,
+      "date": "2026-11-14",
+      "source": {
+        "name": "광주광역시 버스정보 · 노선별 정류소",
+        "url": "https://bus.jeonnam-gwangju.go.kr/busmap/lineSearch"
+      },
+      "file": "bus-gwangju.json",
+      "numbers": 127,
+      "directions": 127
+    }
+  ],
+  "otherRegions": []
+}

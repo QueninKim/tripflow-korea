@@ -80,3 +80,41 @@ Seconds are summed before rounding the total upward to whole minutes. The displa
 `metro-time.js` handles estimation and an immutable timeline preview. `metro-times.json` publishes station coordinates, profiles, reference intervals and provenance under ODbL-1.0; Humetro's source permits unrestricted reuse. No new live routing API, key, server or tracking is introduced. All calculations run on the device.
 
 Automatic time snapshots live in the versioned route note, with `mode`, total minutes, component seconds, profile version, options and operator/model interval counts. The installed native enum remains compatible; the web labels a matching snapshot **Auto estimate**, while a bilingual human-readable timing line survives the native offline view. Existing native code and TestFlight build are unchanged.
+
+## Bus maps and readable subway view · web-9
+
+The subway planner starts with **Large text · by line**. Each line is a scrollable station-order diagram with 17px station names, bilingual labels, interchange rings and connecting-line buttons. Tapping a station opens the same Start / Transfer / End controls as the full map. Line branches and directed tracks remain distinct. The existing **Whole network** view, its zoom/search controls, all five regions, saved routes and automatic time calculations remain available. Switching views preserves the route draft; the readable view returns to its scroll position and starts near the saved boarding station.
+
+**Bus maps** adds on-device route planning for five regional snapshots. Counts distinguish unique displayed route numbers from directional services and variants:
+
+| Region | Route numbers | Services / variants | Stop identities | Source snapshot |
+|---|---:|---:|---:|---|
+| Seoul | 718 | 718 | 12,897 | 2026-09-02 |
+| Busan | 327 | 327 | 8,525 | 2026-11-14 |
+| Daegu area | 164 | 495 | 5,214 | 2026-11-14 |
+| Daejeon area | 138 | 279 | 3,453 | 2026-11-14 |
+| Gwangju | 127 | 127 | 2,907 | 2026-11-14 |
+
+Seoul contains the published Seoul routes, including village, night, airport and suburban stops of those services. It does not represent every Gyeonggi / Incheon route. Busan includes the official site's published city/village service variants. Daegu and Daejeon include adjacent-area services present in their official catalogs. Counts describe this snapshot, not a nationwide completeness claim. An absent reverse panel/empty direction is not invented. English UI retains official Korean stop names when the source supplies no English name; stop IDs/codes disambiguate locations. Busan's published English stop names are searchable.
+
+### Bus interaction and storage
+
+Search a route number, stop name or stop code. The canvas position diagram shows a selected route, or all published routes with the selected route emphasized. Lines connect stop coordinates in service order; they are not road geometry. Direction arrows and the next-stop name help confirm direction. Tap a marker or the accessible large-text stop list, then choose Start / Transfer / End. Nearby and opposite-side stops keep separate IDs. Up to four mandatory transfer stops are followed in order, with an actual change of buses there. Connections prioritize fewer changes, then estimated travel time, and show up to three different first-bus suggestions. They do not include a mixed bus/subway search.
+
+The graph uses ordered route occurrences, so repeated stop IDs in loops cannot shortcut intermediate stops. Reverse travel requires an actual published sequence. Transfers can walk to another stop within 180 metres, shown explicitly in the route summary; this proximity model does not verify crossings, barriers or accessibility. Regional data loads only when opened. Map rendering, routing and timing run on the device, with no trip or location transmission to an external map API.
+
+Saving a bus route applies the estimated incoming movement time and updates downstream itinerary arrivals. The preview includes the destination's revised arrival. Automatic time uses 18 km/h over 1.25× the straight-line inter-stop distance, plus 20 seconds per hop. Initial/transfer waits default to seven minutes and are editable. Transfer walking uses the same distance factor at 75 m/min plus a one-minute alighting/boarding allowance. Optional place-to-stop walking uses 1.25× straight-line distance at 75 m/min; it defaults on for a selected itinerary movement. Walking access beyond 15 km, invalid waits or totals outside 1–2,880 minutes block automatic saving. These are planning assumptions; traffic, real-time arrivals, timetables, first/last buses, fares and availability of night-only services are not inferred. A manual total or explicitly unknown duration remains available.
+
+Bus metadata is stored in a `[TripFlow Bus v1]` note block. It contains the regional snapshot version, ordered route occurrence legs, explicit transfer IDs and a timing snapshot. `transit-note.js` preserves ordinary notes and replaces the previous bus/subway plan when the incoming movement's transit choice changes. Combined notes respect the installed app's 2,000-character limit. Manual time edits replace automatic labels; itinerary reordering invalidates durations and timing summaries, while route identities remain available for review/removal, including a route moved to the first place. Route changes are not saved until Save. Device persistence, JSON backups and text export include the chosen route. No native enum, bridge or TestFlight build change is required.
+
+### Bus provenance
+
+Only factual names, identities, coordinates and published stop ordering are distributed. No vehicle positions, vehicle registration plates, site keys, cookies or session tokens are included. Each dataset links its official source:
+
+- [Seoul Open Data: bus route / stop sequence XLSX, 2026-09-02](https://data.seoul.go.kr/dataList/OA-1095/S/1/datasetView.do). Published order values are sorted; gaps in source sequence numbering are retained as the source's ordered list, without inventing missing stops.
+- [Busan BIMS: route-by-stop download](https://bus.busan.go.kr/busanBIMS/StationInfo.asp), WGS84 coordinates and official English names.
+- [Daegu official bus route guide](https://businfo.daegu.go.kr/ba/route/route.do?act=main&layout=mainNew), forward/backward service panels. The site's declared EPSG:5187 stop coordinates were converted to WGS84 with pyproj 3.8.0 (GRS80; always_xy). Circular services remain one-way when no reverse panel is published.
+- [Daejeon Traffic Information Center](https://traffic.daejeon.go.kr/bus/), public route catalog and ordered Up/Down stop records. Duplicate rows from multiple vehicles at the same sequence position are deduplicated by the published stop sequence; live fields are discarded. Three empty Down lists remain absent.
+- [Gwangju official bus information](https://bus.jeonnam-gwangju.go.kr/busmap/lineSearch), the 127 local services (`METRO_FLAG=0`) and their published stop order/coordinates. Linked external-city services are excluded.
+
+The 40 automated tests cover existing money/subway behaviour and bus directionality, repeated stop occurrences, mandatory transfers, separate nearby platforms, source snapshot validation, timing, native-size notes, route replacement and dataset integrity in all five regions. UI checks cover Korean/English, phone/desktop layouts, actual map taps, saved transfer routes, automatic/manual times, preservation after reload, first-place stale-route controls and the original 656-station capital subway SVG. Native model round-trip compatibility is checked against the unchanged installed schema.
