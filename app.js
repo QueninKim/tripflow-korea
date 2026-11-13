@@ -1,6 +1,6 @@
-import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState} from './core.js?v=web-2';
+import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState} from './core.js?v=web-3';
 
-const VERSION='web-2';
+const VERSION='web-3';
 const native=!!window.webkit?.messageHandlers?.tripflow;
 const bridge=(command,payload={})=>window.webkit.messageHandlers.tripflow.postMessage({command,...payload});
 const $=s=>document.querySelector(s);
@@ -242,7 +242,7 @@ modal.addEventListener('close',()=>{if(data)render();});
 window.addEventListener('online',()=>data&&render());window.addEventListener('offline',()=>data&&render());
 window.TripFlow={resume:async()=>{
   if(modal.open||saveFailed)return;
-  const r=revision;try{const response=await fetch('./version.json',{cache:'no-store'});if(!response.ok)return;const v=await response.json();if(v.bridge<=1&&v.version!==VERSION&&revision===r){await saveQueue;if(!saveFailed&&!modal.open&&revision===r)location.reload();}}catch{}
+  const r=revision;try{const response=await fetch(new URL('./version.json?ts='+Date.now(),location.href),{cache:'no-store'});if(!response.ok)return;const v=await response.json();if(v.bridge<=1&&v.version!==VERSION&&revision===r){await saveQueue;if(!saveFailed&&!modal.open&&revision===r)location.reload();}}catch{}
 }};
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')window.TripFlow.resume();});
 async function start(){
