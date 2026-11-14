@@ -1,6 +1,6 @@
-import {validateMetroPlan,metroPaths,metroTimingText} from './metro-core.js?v=web-13';
-import {validateBusPlan,busGraph,rideSeconds} from './bus-core.js?v=web-13';
-import {groundMeters,estimateMetroTime} from './metro-time.js?v=web-13';
+import {validateMetroPlan,metroPaths,metroTimingText} from './metro-core.js?v=web-14';
+import {validateBusPlan,busGraph,rideSeconds} from './bus-core.js?v=web-14';
+import {groundMeters,estimateMetroTime} from './metro-time.js?v=web-14';
 const START='[TripFlow Mixed v1]',END='[/TripFlow Mixed]';
 export const metroRegionID=id=>id==='seoul'?'capital':id;
 export const busRegionID=id=>id==='capital'?'seoul':id;

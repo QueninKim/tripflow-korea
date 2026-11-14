@@ -1,3 +1,4 @@
+import {rideShape} from './journey-shapes.js?v=web-14';
 export const journeyStyles={
   bus:{color:'#2368dc',weight:6,dashArray:null},
   subway:{color:'#8c39c7',weight:7,dashArray:null},
@@ -9,9 +10,9 @@ const position=p=>{
   return [lat,lng];
 };
 const same=(a,b)=>a[0]===b[0]&&a[1]===b[1];
-export function journeyGeometry(quote,{fromPlace,toPlace}={}){
+export function journeyGeometry(quote,{fromPlace,toPlace,shapes}={}){
   if(!quote||!Array.isArray(quote.details))throw Error('invalid-map-route');
-  const lines=[],markers=[],allPoints=[];
+  const lines=[],markers=[],allPoints=[],coverage=[];
   const addLine=(kind,nodes,extra={})=>{
     const points=nodes.map(position);if(points.length<2)throw Error('invalid-map-route');
     allPoints.push(...points);
@@ -35,7 +36,11 @@ export function journeyGeometry(quote,{fromPlace,toPlace}={}){
         addLine('walking',[c.from,c.to],{role:'transfer',transfer:i,internal:!!c.internal});
         marker('transfer-out',c.from,{transfer:i,next:c.to,service:d});
       }
-      addLine(d.kind,d.path,{role:'ride',legIndex:i,service:d});
+      const shaped=rideShape(d,shapes);coverage.push({legIndex:i,kind:d.kind,service:d,available:shaped.available,total:shaped.total});
+      const chunks=[];for(const path of shaped.segments){const prev=chunks.at(-1);if(prev&&same(prev.at(-1),path[0]))prev.push(...path.slice(1));else chunks.push([...path]);}
+      for(const points of chunks)addLine(d.kind,points.map(p=>({lat:p[0],lng:p[1]})),{role:'ride',legIndex:i,service:d,nodes:d.path});
+      // Bounds retain all scheduled stops even when source geometry is missing.
+      allPoints.push(...d.path.map(position));
       marker('board',d.path[0],{legIndex:i,service:d});
       // Every actual alighting position is retained, including separate platforms.
       marker('alight',d.path.at(-1),{legIndex:i,service:d});
@@ -44,14 +49,5 @@ export function journeyGeometry(quote,{fromPlace,toPlace}={}){
     marker('destination',end);
   }
   if(!allPoints.length)throw Error('invalid-map-route');
-  return {lines,markers,bounds:[[Math.min(...allPoints.map(p=>p[0])),Math.min(...allPoints.map(p=>p[1]))],[Math.max(...allPoints.map(p=>p[0])),Math.max(...allPoints.map(p=>p[1]))]],allPoints};
-}
-export function journeyFallbackRegion(geometry,label){
-  const stops={},routes=geometry.lines.map((l,i)=>{
-    const ids=l.points.map((p,j)=>{const id='p-'+i+'-'+j,title=label(l.nodes[j]);stops[id]={lat:p[0],lng:p[1],ko:title,en:title};return id;});
-    return {id:l.id,no:l.kind,stops:ids,color:l.color,kind:l.kind};
-  });
-  // A zero-distance fixture still has visible, bounded endpoint markers.
-  if(!routes.length){const a=geometry.markers[0],b=geometry.markers.at(-1);stops.start={lat:a.point[0],lng:a.point[1],ko:label(a.node),en:label(a.node)};stops.end={lat:b.point[0],lng:b.point[1],ko:label(b.node),en:label(b.node)};routes.push({id:'direct',no:'walking',stops:['start','end'],color:journeyStyles.walking.color,kind:'walking'});}
-  return {id:'journey',stops,routes};
+  return {lines,markers,coverage,bounds:[[Math.min(...allPoints.map(p=>p[0])),Math.min(...allPoints.map(p=>p[1]))],[Math.max(...allPoints.map(p=>p[0])),Math.max(...allPoints.map(p=>p[1]))]],allPoints};
 }
