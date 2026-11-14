@@ -1,13 +1,13 @@
-import {readBusNote,busGraph,busStopName,findBusRoutes,busTransferCandidates,validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-12';
-import {createBusMap} from './bus-map.js?v=web-12';
-import {projectedArrivals} from './metro-time.js?v=web-12';
-import {clock} from './core.js?v=web-12';
+import {readBusNote,busGraph,busStopName,findBusRoutes,busTransferCandidates,validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-13';
+import {createBusMap} from './bus-map.js?v=web-13';
+import {projectedArrivals} from './metro-time.js?v=web-13';
+import {clock} from './core.js?v=web-13';
 export function createBusPlanner(ctx){
   const {t,h,modal,modalTop,openModal,toast}=ctx,loaded=new Map();let index,region,draft,map,loading;
   const g=()=>busGraph(region),label=s=>t(s.en||s.ko,s.ko),name=id=>label(region.stops[id]),route=()=>draft.options[draft.choice];
   const serving=id=>[...new Set((g().membership.get(id)||[]).map(x=>x[0]))].map(id=>g().routes.get(id));
   const pill=r=>`<span class="bus-number" style="--bus-color:${r.color}">${h(r.no)}</span>`;
-  async function loadRegion(id){if(!loaded.has(id)){const entry=index.regions.find(r=>r.id===id),res=await fetch('./'+entry.file+'?v=web-12');if(!res.ok)throw Error('data');loaded.set(id,await res.json());}region=loaded.get(id);busGraph(region);}
+  async function loadRegion(id){if(!loaded.has(id)){const entry=index.regions.find(r=>r.id===id),res=await fetch('./'+entry.file+'?v=web-13');if(!res.ok)throw Error('data');loaded.set(id,await res.json());}region=loaded.get(id);busGraph(region);}
   function recompute(){draft.choice=0;draft.timeMode='auto';draft.manualMinutes='';draft.options=draft.from&&draft.to?findBusRoutes(region,draft):[];}
   function quote(c=route(),forceAuto=false){
     if(!c)return null;
@@ -45,7 +45,7 @@ export function createBusPlanner(ctx){
   function focus(id,near=[],zoom=false){draft.focused=id;draft.nearby=near;if(!draft.all&&!serving(id).some(r=>r.id===draft.line))draft.line=serving(id)[0].id;draw();if(zoom)map.focus(id);}
   async function open(target,pick=null){
     if(loading)return;loading=true;
-    try{if(!index){const r=await fetch('./bus-index.json?v=web-12');if(!r.ok)throw Error('data');index=await r.json();}
+    try{if(!index){const r=await fetch('./bus-index.json?v=web-13');if(!r.ok)throw Error('data');index=await r.json();}
       const d=ctx.getDay(),s=d?.stops.find(s=>s.id===target),parsed=readBusNote(s?.note),city=ctx.getCity();let plan=pick?.plan||parsed.plan;const id=pick?.region||plan?.region||(/부산|busan|김해|gimhae/i.test(city)?'busan':/광주|gwangju/i.test(city)?'gwangju':/대구|daegu|경산|gyeongsan/i.test(city)?'daegu':/대전|daejeon|세종|sejong/i.test(city)?'daejeon':'seoul');await loadRegion(id);
       try{if(plan)validateBusPlan(region,plan);}catch{plan=null;}
       const defaultLine=region.routes.find(r=>r.no===({seoul:'종로11',busan:'1003',gwangju:'01',daegu:'급행1',daejeon:'102'}[id]))||region.routes[0];draft={from:plan?g().routes.get(plan.legs[0][0]).stops[plan.legs[0][1]]:'',to:plan?g().routes.get(plan.legs.at(-1)[0]).stops[plan.legs.at(-1)[2]]:'',vias:plan?.vias||[],line:plan?.legs[0][0]||defaultLine.id,all:false,options:plan?[{legs:structuredClone(plan.legs),changes:plan.legs.length-1,hops:plan.legs.reduce((n,l)=>n+l[2]-l[1],0)}]:[],choice:0,focused:'',nearby:[],target:s?.id||'',timeMode:plan&&(plan.timing?.mode==='manual'||s?.travelMinutes!==plan.timing?.minutes)?'manual':'auto',manualMinutes:plan?String(s?.travelMinutes??''):'',timingOptions:{waitMinutes:7,transferWaitMinutes:7,includeWalk:!!target,...plan?.timing?.options},existing:!!parsed.plan,tripID:ctx.getTripID(),dayID:d?.id,listOpen:false};draft.pick=pick;if(pick){draft.target='';draft.existing=false;draft.timeMode='auto';draft.timingOptions.includeWalk=false;if(!plan&&pick.seedFrom){draft.from=pick.seedFrom;draft.line=serving(pick.seedFrom)[0]?.id||draft.line;}}draw({reset:true,top:true});if(pick?.seedFrom)map?.focus(pick.seedFrom);

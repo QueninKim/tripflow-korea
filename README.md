@@ -155,7 +155,7 @@ Validation: **69 calculation/data/storage tests**, **12 existing manual-composer
 
 ## 실시간 도착정보 신청 · 준비 상태
 
-**현재 공개 홈페이지는 web-12 버스·지하철 통합 검색·예상시간 방식입니다. 실시간 기능은 적용하지 않았습니다.** 인증키가 없는 상태이며, `server/`의 중계·계산 코드는 배포 전 준비본입니다. 키 발급, 서버 연결, 정류소·노선·방향 매핑 및 실제 응답 검증이 끝나야 실시간 경로를 켤 수 있습니다. 기존 앱·홈페이지의 일정과 경비는 변경하지 않았습니다.
+**현재 공개 홈페이지는 web-13 버스·지하철 통합 검색·실제 지도 표시·예상시간 방식입니다. 실시간 도착정보는 적용하지 않았습니다.** 인증키가 없는 상태이며, `server/`의 중계·계산 코드는 배포 전 준비본입니다. 키 발급, 서버 연결, 정류소·노선·방향 매핑 및 실제 응답 검증이 끝나야 실시간 경로를 켤 수 있습니다. 기존 앱·홈페이지의 일정과 경비는 변경하지 않았습니다.
 
 ### 먼저 신청할 두 가지
 
@@ -201,3 +201,18 @@ The standard **Directions / 길찾기** button on an itinerary movement opens th
 The existing web-11 engine, source coverage, timing model and native save contract are unchanged. Direct walking, a single mode or a mixed route can win by estimated total time. Saving applies the selected movement duration and later arrival times, or appends a newly chosen journey using the existing append rules. The main Directions button also opens this combined comparison when the sample movement was previously marked walking.
 
 The real-time integration prototype in `server/` remains disconnected. The user's current request is handled by the existing regional datasets and estimated waits; API key registration and a new backend are not required for this combined-search release.
+
+
+## Selected journey on a real map · web-13
+
+Automatic directions and the manual bus/subway composer show the selected journey over OpenStreetMap street tiles. Bus rides are blue; subway rides are purple with a white track pattern; walking connections are grey dashed lines. The map includes departure/destination pins, numbered boarding points, transfer/alighting points, permanent route labels and tap/click popups. Alternative selection redraws the selected route. Zoom, dragging, keyboard navigation and fit-to-whole-journey controls are supported. Korean/English labels follow the selected app language.
+
+The background is a real geographic map. Overlay lines connect every published stop/station coordinate in the selected order. They do **not** trace precise road curves or rail track geometry. Pedestrian paths, station entrances and crossings are unverified. These limits are displayed below the map. Station-only calculations do not silently add place access lines that were excluded from timing. Route choice, estimated minutes, save format and money data are unchanged.
+
+Leaflet **1.9.4 stable** is bundled locally, including its CSS, default images, source map and BSD-2-Clause license. The main CSS/JS use their pinned integrity hashes. Details and checksums are in `MapVendors.json`; documentation: https://leafletjs.com/reference-1.9.4.html. The basemap uses visible interactive tiles from `https://tile.openstreetmap.org/{z}/{x}/{y}.png`, with visible OpenStreetMap attribution. Browser caching is retained; there is no tile prefetch, bulk download, offline tile pack or cache-busting. The shared public tile service has no availability guarantee; see https://operations.osmfoundation.org/policies/tiles/. A dedicated provider is needed if the service grows beyond that usage policy.
+
+Map tile requests reveal the displayed map area to the tile provider. Trip/expense records and route notes remain on the device; no itinerary JSON or new routing API request is sent to OSM. Map tiles require internet. If some tiles fail, the vector route remains visible with a notice. If the map library is unavailable, the previous coordinate diagram remains available and is explicitly labelled as such. The map is removed and its resize listeners are disconnected when the route dialog is replaced or closed.
+
+New validation covers geographic coordinate order and bounds, all bus/rail stops, separate platforms, internal transfers, direct walking, place-access inclusion, all five regional snapshots, map styles, labels, tile-error states, escaped popup content, camera restore and teardown. Simulated DOM flows exercise the fallback diagram; actual basemap rendering and interactions are checked separately in the browser.
+
+Saved automatic alternatives remain selected when an itinerary is reopened; a valid saved route outside the current top suggestions is retained as an additional labelled choice. A fresh endpoint/settings search returns to the fastest new estimate. Toggling place-access walking in the composer redraws both the map and duration together.

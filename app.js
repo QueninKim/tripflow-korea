@@ -1,13 +1,13 @@
-import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState,budgetCurrencies,budgetAmount,convertedBudget,budgetTotal,convertedExpense,expenseRateKey,expenseRateEntries} from './core.js?v=web-12';
+import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState,budgetCurrencies,budgetAmount,convertedBudget,budgetTotal,convertedExpense,expenseRateKey,expenseRateEntries} from './core.js?v=web-13';
 
-import {createMetroPlanner} from './metro.js?v=web-12';
-import {createAutoPlanner} from './auto.js?v=web-12';
-import {autoSummary,sameAutoPlace} from './auto-core.js?v=web-12';
-import {createMixedPlanner} from './mixed.js?v=web-12';
-import {createBusPlanner} from './bus.js?v=web-12';
-import {readTransitNote,mergeTransitNote,transitStatus,isAutoTransitTime,setTransitManualTime} from './transit-note.js?v=web-12';
+import {createMetroPlanner} from './metro.js?v=web-13';
+import {createAutoPlanner} from './auto.js?v=web-13';
+import {autoSummary,sameAutoPlace} from './auto-core.js?v=web-13';
+import {createMixedPlanner} from './mixed.js?v=web-13';
+import {createBusPlanner} from './bus.js?v=web-13';
+import {readTransitNote,mergeTransitNote,transitStatus,isAutoTransitTime,setTransitManualTime} from './transit-note.js?v=web-13';
 
-const VERSION='web-12';
+const VERSION='web-13';
 const native=!!window.webkit?.messageHandlers?.tripflow;
 const bridge=(command,payload={})=>window.webkit.messageHandlers.tripflow.postMessage({command,...payload});
 const $=s=>document.querySelector(s);

@@ -1,7 +1,7 @@
-import {metroGraph,metroPaths,metroTimingText} from './metro-core.js?v=web-12';
-import {groundMeters,modelRunSeconds} from './metro-time.js?v=web-12';
-import {rideSeconds} from './bus-core.js?v=web-12';
-import {mixedOptions,describeMixedLeg} from './mixed-core.js?v=web-12';
+import {metroGraph,metroPaths,metroTimingText} from './metro-core.js?v=web-13';
+import {groundMeters,modelRunSeconds} from './metro-time.js?v=web-13';
+import {rideSeconds} from './bus-core.js?v=web-13';
+import {mixedOptions,describeMixedLeg} from './mixed-core.js?v=web-13';
 const position=p=>Array.isArray(p)?p:[p?.latitude,p?.longitude];
 const integer=(v,f,min,max)=>{if(v===undefined)return f;if(!['number','string'].includes(typeof v)||(typeof v==='string'&&!v.trim())||!Number.isInteger(Number(v))||Number(v)<min||Number(v)>max)throw Error('invalid-search-options');return Number(v);};
 export function autoOptions(raw={}){
