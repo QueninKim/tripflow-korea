@@ -1,10 +1,23 @@
-import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-16';
-import {recommendAutoRoutes,autoOptions,autoTimingSnapshot,autoSummary,validateAutoPlan,quoteAutoRoute} from './auto-core.js?v=web-16';
-import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan} from './mixed-core.js?v=web-16';
-import {validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-16';
-import {validateMetroPlan,metroSummary} from './metro-core.js?v=web-16';
-import {estimateMetroTime,timingSnapshot,groundMeters} from './metro-time.js?v=web-16';
+import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-17';
+import {recommendAutoRoutes,autoOptions,autoTimingSnapshot,autoSummary,validateAutoPlan,quoteAutoRoute} from './auto-core.js?v=web-17';
+import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan} from './mixed-core.js?v=web-17';
+import {validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-17';
+import {validateMetroPlan,metroSummary} from './metro-core.js?v=web-17';
+import {estimateMetroTime,timingSnapshot,groundMeters} from './metro-time.js?v=web-17';
 export const hasSelectedTransit=(parsed,from,to)=>!!parsed.plan&&parsed.plan.from===from.id&&parsed.plan.to===to.id&&!(parsed.kind==='auto'&&parsed.plan.routeMode==='walking');
+export function calculateWalkingMovement(from,to){
+  const distance=groundMeters([from.place.latitude,from.place.longitude],[to.place.latitude,to.place.longitude]);
+  // The existing local walking model: straight distance × 1.25 at 75 m/min.
+  // This is an estimate, not a queried pedestrian route.
+  const meters=distance<5?0:Math.round(distance*1.25),seconds=distance<5?0:Math.round(distance),minutes=Math.ceil(seconds/60);
+  if(minutes>2880)throw Error('walk-too-long');
+  return {id:to.id,from:from.id,method:minutes===0?'same-place':'walking',minutes,meters,seconds,model:'distance-walk-v1',services:[],patch:{mode:'walking',travelMinutes:minutes,durationSource:'gateway',note:mergeTransitNote(to.note,null)}};
+}
+export function compareMovementTimes(transit,walking){
+  if(!transit||transit.error||!walking||walking.error)return null;
+  const difference=transit.minutes-walking.minutes;
+  return {faster:difference===0?'equal':difference>0?'walking':'transit',minutes:Math.abs(difference)};
+}
 export function calculateTransitMovement(data,from,to){
   const fromPlace=from.place,toPlace=to.place,parsed=readTransitNote(to.note),same=groundMeters([fromPlace.latitude,fromPlace.longitude],[toPlace.latitude,toPlace.longitude])<5;
   if(same)return {id:to.id,from:from.id,method:'same-place',minutes:0,services:[],patch:{mode:'walking',travelMinutes:0,durationSource:'gateway',note:mergeTransitNote(to.note,null)}};

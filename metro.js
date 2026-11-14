@@ -1,8 +1,8 @@
-import {readMetroNote,metroStatus,metroGraph,metroPaths,findMetroRoutes,validateMetroPlan,metroSummary,routeContainsTransfers,isAutoMetroTime} from './metro-core.js?v=web-16';
-import {createNetworkMap} from './metro-map.js?v=web-16';
-export * from './metro-core.js?v=web-16';
-import {estimateMetroTime,timingSnapshot,projectedArrivals} from './metro-time.js?v=web-16';
-import {clock} from './core.js?v=web-16';
+import {readMetroNote,metroStatus,metroGraph,metroPaths,findMetroRoutes,validateMetroPlan,metroSummary,routeContainsTransfers,isAutoMetroTime} from './metro-core.js?v=web-17';
+import {createNetworkMap} from './metro-map.js?v=web-17';
+export * from './metro-core.js?v=web-17';
+import {estimateMetroTime,timingSnapshot,projectedArrivals} from './metro-time.js?v=web-17';
+import {clock} from './core.js?v=web-17';
 
 export function createMetroPlanner(ctx){
   const {t,h,modal,modalTop,openModal,toast}=ctx;
@@ -108,7 +108,7 @@ export function createMetroPlanner(ctx){
   async function open(target,pick=null){
     try{
       if(!network||!layout||!timeData){
-        if(!request)request=Promise.all(['metro-data.json','metro-layout.json','metro-times.json'].map(name=>fetch('./'+name+'?v=web-16').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{request=null;throw e;});
+        if(!request)request=Promise.all(['metro-data.json','metro-layout.json','metro-times.json'].map(name=>fetch('./'+name+'?v=web-17').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{request=null;throw e;});
         [network,layout,timeData]=await request;
       }
       map?.destroy();map=null;
