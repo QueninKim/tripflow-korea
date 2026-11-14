@@ -1,7 +1,7 @@
-import {metroGraph,metroPaths,metroTimingText} from './metro-core.js?v=web-18';
-import {groundMeters,modelRunSeconds} from './metro-time.js?v=web-18';
-import {rideSeconds} from './bus-core.js?v=web-18';
-import {mixedOptions,describeMixedLeg} from './mixed-core.js?v=web-18';
+import {metroGraph,metroPaths,metroTimingText} from './metro-core.js?v=web-19';
+import {groundMeters,modelRunSeconds} from './metro-time.js?v=web-19';
+import {rideSeconds} from './bus-core.js?v=web-19';
+import {mixedOptions,describeMixedLeg} from './mixed-core.js?v=web-19';
 const position=p=>Array.isArray(p)?p:[p?.latitude,p?.longitude];
 const integer=(v,f,min,max)=>{if(v===undefined)return f;if(!['number','string'].includes(typeof v)||(typeof v==='string'&&!v.trim())||!Number.isInteger(Number(v))||Number(v)<min||Number(v)>max)throw Error('invalid-search-options');return Number(v);};
 export function autoOptions(raw={}){
@@ -41,7 +41,7 @@ export function quoteAutoRoute(data,legs,{fromPlace,toPlace,options={}}={}){
   const access=[];for(const [p,s,side]of [[origin,details[0].path[0],'from'],[destination,details.at(-1).path.at(-1),'to']]){const meters=Math.round(groundMeters(p,point(s)));if(meters>opts.accessRadius)throw Error('access-too-far');seconds.walk+=meters;access.push({side,meters,seconds:meters});}
   return {v:1,mode:'auto',routeMode:'transit',model:'auto-transit-v1',options:opts,seconds,...allocate(seconds),details,connections,access};
 }
-export function autoTimingSnapshot(q){return {v:1,mode:'auto',minutes:q.minutes,seconds:q.seconds,options:q.options,model:q.model};}
+export function autoTimingSnapshot(q){return {v:1,mode:'auto',minutes:q.minutes,seconds:q.seconds,options:q.options,model:q.model,...(q.pedestrian?{pedestrian:{v:1,id:q.pedestrian.id,seconds:q.seconds.walk}}:{})};}
 export function validateAutoPlan(data,plan){
   if(plan.v!==1||plan.region!==data.region.id||plan.b!==data.bus.version||plan.m!==data.network.checkedAt||!['transit','walking'].includes(plan.routeMode)||!Array.isArray(plan.legs)||plan.legs.length>6||(plan.routeMode==='walking')!==(plan.legs.length===0))throw Error('invalid-route');
   const opts=autoOptions(plan.timing?.options);if(plan.legs.length>opts.maxTransfers+1)throw Error('invalid-route');const details=plan.legs.map(l=>describe(data,l));for(let i=1;i<details.length;i++)connector(details[i-1],details[i],opts,data.times.walking.entryMinutes*60,data.times.walking.exitMinutes*60);return details;
@@ -110,7 +110,7 @@ export function searchAutoTransit(data,{fromPlace,toPlace,options={},firstKind=n
 export function recommendAutoRoutes(data,query,limits={}){
   const options=autoOptions(query.options),routes=[];let totalVisited=0,limitedAlternatives=false;
   const first=searchAutoTransit(data,{...query,options},limits);totalVisited+=first.visited;if(first.route)routes.push(first.route);
-  if(first.route&&limits.alternatives!==false){const kind=first.route.firstService.startsWith('bus:')?'subway':'bus';for(const variant of [{firstKind:kind},{banFirst:[first.route.firstService]}]){try{const r=searchAutoTransit(data,{...query,...variant,options},limits);totalVisited+=r.visited;if(r.route&&!routes.some(x=>JSON.stringify(x.legs)===JSON.stringify(r.route.legs)))routes.push(r.route);}catch(e){if(e.message==='search-limit'){limitedAlternatives=true;continue;}throw e;}}}
+  if(first.route&&limits.alternatives!==false){const kind=first.route.firstService.startsWith('bus:')?'subway':'bus';for(const variant of [{firstKind:kind},{banFirst:[first.route.firstService]}]){try{const r=searchAutoTransit(data,{...query,...variant,options},limits);totalVisited+=r.visited;if(r.route&&!routes.some(x=>JSON.stringify(x.legs)===JSON.stringify(r.route.legs)))routes.push(r.route);}catch(e){if(['search-limit','unrepresentable-route','invalid-route'].includes(e.message)){limitedAlternatives=true;continue;}throw e;}}}
   try{const quote=quoteAutoRoute(data,[],{...query,options});routes.push({legs:[],quote,firstService:null,certified:true});}catch(e){if(e.message!=='walk-too-far')throw e;}
   routes.sort((a,b)=>a.quote.totalSeconds-b.quote.totalSeconds||a.legs.length-b.legs.length);if(!routes.length)throw Error(first.reason||'no-route');
   return {routes:routes.slice(0,3),visited:totalVisited,limitedAlternatives,scope:{accessRadius:options.accessRadius,transferRadius:options.transferRadius,maxTransfers:options.maxTransfers,live:false}};

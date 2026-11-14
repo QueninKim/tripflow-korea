@@ -1,8 +1,8 @@
-import {createLocationOverlay} from './location-overlay.js?v=web-18';
-import {journeyGeometry,journeyStyles} from './journey-geometry.js?v=web-18';
-import {loadJourneyShapes} from './journey-shapes.js?v=web-18';
+import {createLocationOverlay} from './location-overlay.js?v=web-19';
+import {journeyGeometry,journeyStyles} from './journey-geometry.js?v=web-19';
+import {loadJourneyShapes} from './journey-shapes.js?v=web-19';
 export function journeyMapLegend(t){return `<div class="journey-map-legend" aria-label="${t('Route map legend','경로 지도 범례')}"><span><i class="journey-key-bus"></i>${t('Bus','버스')}</span><span><i class="journey-key-subway"></i>${t('Subway','지하철')}</span><span><i class="journey-key-walking"></i>${t('Walk','도보')}</span><small>${t('Numbers show boarding order','숫자는 탑승 순서')}</small></div>`;}
-export function journeyMapNote(t){return t('Bus lines follow official road geometry; subway lines follow mapped tracks. Missing source sections are left blank. Dashed walking links are reference connections, not pedestrian directions.','버스는 공식 운행 도로, 지하철은 지도에 기록된 선로를 따라 표시합니다. 자료가 없는 구간은 비워 둡니다. 점선 도보는 위치 연결 참고선이며 실제 보행 길안내가 아닙니다.')+` <a href="./route-shape-sources.html" target="_blank" rel="noopener">${t('Sources & coverage','출처·표시 범위')} ↗</a>`;}
+export function journeyMapNote(t){return t('Bus lines follow official road geometry; subway lines follow mapped tracks. Missing source sections are left blank. Green walking lines follow queried outdoor footpaths. Station-interior paths are not mapped; their time is estimated separately.','버스는 공식 운행 도로, 지하철은 지도에 기록된 선로를 따라 표시합니다. 자료가 없는 구간은 비워 둡니다. 초록색 도보선은 조회된 실외 보행길입니다. 역 내부 통로는 그리지 않으며 역내 이동시간은 별도 예상입니다. 보행길은 가까운 연결 지점 기준이며 출입구·임시통제는 다를 수 있습니다.')+` <a href="./route-shape-sources.html" target="_blank" rel="noopener">${t('Sources & coverage','출처·표시 범위')} ↗</a>`;}
 export function createJourneyMap(options){
   let inner,disposed=false;const {element,t}=options;if(!options.quote.details.length)options={...options,shapes:{bus:{},subway:{}}};
   const render=(shapes,state)=>{if(disposed)return;const camera=inner?.getCamera()||options.camera;inner?.destroy();inner=renderJourneyMap({...options,shapes,camera:camera?.type==='geographic'?camera:options.camera,shapeState:state});};
@@ -44,7 +44,7 @@ function renderJourneyMap({element,quote,fromPlace,toPlace,t,placeName,camera,on
       L.polyline(line.points,{color:'#fff',weight:line.weight+4,opacity:.92,interactive:false,lineCap:'round'}).addTo(real);
       const path=L.polyline(line.points,{color:line.color,weight:line.weight,opacity:1,dashArray:line.dashArray||undefined,lineCap:'round',lineJoin:'round'}).addTo(real);
       if(line.kind==='subway')L.polyline(line.points,{color:'#fff',weight:2,dashArray:'2 8',opacity:.9,interactive:false}).addTo(real);
-      const title=line.role==='ride'?kindName(line.kind)+' · '+t(line.service.en,line.service.ko):line.role==='foot-route'?t('Pedestrian route','실제 보행 경로'):t('Walking connection','도보 연결');
+      const title=line.role==='ride'?kindName(line.kind)+' · '+t(line.service.en,line.service.ko):line.role==='foot-route'||line.actualWalking?t('Pedestrian route','실제 보행 경로'):t('Walking connection','도보 연결');
       path.bindPopup(popup(title,name(line.nodes[0])+' → '+name(line.nodes.at(-1))));layers.push({line,path});
       if(line.role==='ride'&&labelLines.get(line.legIndex)===line){
         const tag=document.createElement('span');tag.className='journey-line-tag journey-line-tag-'+line.kind;tag.textContent=(line.legIndex+1)+' · '+t(line.service.en,line.service.ko);

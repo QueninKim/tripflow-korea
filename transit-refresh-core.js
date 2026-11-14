@@ -1,10 +1,10 @@
-import {validateWalkingRoute} from './walking-core.js?v=web-18';
-import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-18';
-import {recommendAutoRoutes,autoOptions,autoTimingSnapshot,autoSummary,validateAutoPlan,quoteAutoRoute} from './auto-core.js?v=web-18';
-import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan} from './mixed-core.js?v=web-18';
-import {validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-18';
-import {validateMetroPlan,metroSummary} from './metro-core.js?v=web-18';
-import {estimateMetroTime,timingSnapshot,groundMeters} from './metro-time.js?v=web-18';
+import {validateWalkingRoute} from './walking-core.js?v=web-19';
+import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-19';
+import {recommendAutoRoutes,autoOptions,autoTimingSnapshot,autoSummary,validateAutoPlan,quoteAutoRoute} from './auto-core.js?v=web-19';
+import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan} from './mixed-core.js?v=web-19';
+import {validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-19';
+import {validateMetroPlan,metroSummary} from './metro-core.js?v=web-19';
+import {estimateMetroTime,timingSnapshot,groundMeters} from './metro-time.js?v=web-19';
 export const hasSelectedTransit=(parsed,from,to)=>!!parsed.plan&&parsed.kind!=='walking'&&parsed.plan.from===from.id&&parsed.plan.to===to.id&&!(parsed.kind==='auto'&&parsed.plan.routeMode==='walking');
 export function calculateWalkingMovement(from,to,value){
   const route=validateWalkingRoute(value);if(groundMeters(route.from,[from.place.latitude,from.place.longitude])>1||groundMeters(route.to,[to.place.latitude,to.place.longitude])>1||!route.id)throw Error('walking-endpoints');
@@ -20,7 +20,7 @@ export function compareMovementTimes(transit,walking){
 export function calculateTransitMovement(data,from,to){
   const fromPlace=from.place,toPlace=to.place,parsed=readTransitNote(to.note),same=groundMeters([fromPlace.latitude,fromPlace.longitude],[toPlace.latitude,toPlace.longitude])<5;
   if(same)return {id:to.id,from:from.id,method:'same-place',minutes:0,services:[],patch:{mode:'walking',travelMinutes:0,durationSource:'gateway',note:mergeTransitNote(to.note,null)}};
-  let kind,plan,summary,minutes,method='selected',services=[];
+  let kind,plan,summary,minutes,candidates,method='selected',services=[];
   if(hasSelectedTransit(parsed,from,to)){
     kind=parsed.kind;plan=structuredClone(parsed.plan);
     try{
@@ -39,13 +39,13 @@ export function calculateTransitMovement(data,from,to){
     method=parsed.plan?'replanned':'suggested';kind='auto';
     // This button explicitly requests transit, so a shorter walking-only option
     // must not replace the requested bus/subway estimate.
-    const options=autoOptions({directWalkLimit:0}),q=recommendAutoRoutes(data,{fromPlace,toPlace,options},{alternatives:false,maxVisited:600000}).routes.find(r=>r.quote.routeMode==='transit');
+    const options=autoOptions({directWalkLimit:0});candidates=recommendAutoRoutes(data,{fromPlace,toPlace,options},{maxVisited:600000}).routes.filter(r=>r.quote.routeMode==='transit');const q=candidates[0];
     if(!q)throw Error('no-route');
     plan={v:1,region:data.region.id,b:data.bus.version,m:data.network.checkedAt,from:from.id,to:to.id,routeMode:'transit',legs:q.legs,timing:autoTimingSnapshot(q.quote)};
     summary=autoSummary(data,plan);minutes=q.quote.minutes;services=q.quote.details.map(d=>({ko:d.ko,en:d.en}));
   }
   if(!Number.isInteger(minutes)||minutes<1||minutes>2880)throw Error('invalid-time');
-  return {id:to.id,from:from.id,method,kind,minutes,services,patch:{mode:'transit',travelMinutes:minutes,durationSource:'manual',note:mergeTransitNote(to.note,plan,summary,kind)}};
+  return {id:to.id,from:from.id,method,kind,minutes,services,...(candidates?{candidates}:{}),patch:{mode:'transit',travelMinutes:minutes,durationSource:'manual',note:mergeTransitNote(to.note,plan,summary,kind)}};
 }
 export function applyTransitResults(day,results){
   const next=structuredClone(day),seen=new Set();

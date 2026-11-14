@@ -1,5 +1,5 @@
-import {mixedData} from './mixed-core.js?v=web-18';
-import {calculateTransitMovement} from './transit-refresh-core.js?v=web-18';
+import {mixedData} from './mixed-core.js?v=web-19';
+import {calculateTransitMovement} from './transit-refresh-core.js?v=web-19';
 export function runTransitRefreshGroup(message,report){
   const {requestId,network,times,bus,movements}=message,data=mixedData(network,times,bus);
   for(const m of movements){let result;try{result={...calculateTransitMovement(data,m.from,m.to),index:m.index};}catch(error){result={id:m.to.id,from:m.from.id,index:m.index,error:error.message};}report({requestId,type:'result',result});}

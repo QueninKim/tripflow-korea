@@ -73,6 +73,19 @@
     "backgroundRequests": false,
     "straightDistanceFallback": false,
     "automaticRetries": false,
-    "maxEndpointDistanceMeters": 50000
+    "maxEndpointDistanceMeters": 50000,
+    "transitScope": [
+      "access",
+      "outdoor transfer",
+      "egress"
+    ],
+    "stationInteriors": "not mapped; separately estimated and labelled",
+    "savedTransitSnapshots": {
+      "key": "tripflow-transit-pedestrian-v1",
+      "maxEntries": 50,
+      "characterBudget": 1500000,
+      "integrity": "SHA-256 vehicle/options/endpoint signature and exact route hashes"
+    },
+    "candidateRanking": "queried bounded candidates only"
   }
 }

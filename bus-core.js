@@ -1,5 +1,5 @@
-import {groundMeters} from './metro-time.js?v=web-18';
-import {metroTimingText} from './metro-core.js?v=web-18';
+import {groundMeters} from './metro-time.js?v=web-19';
+import {metroTimingText} from './metro-core.js?v=web-19';
 const START='[TripFlow Bus v1]',END='[/TripFlow Bus]';
 export function readBusNote(note=''){
   const pos=note.lastIndexOf(START);if(pos<0||!note.endsWith(END))return {note};

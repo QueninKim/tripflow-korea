@@ -1,5 +1,5 @@
-import {groundMeters} from './metro-time.js?v=web-18';
-import {decodeShape} from './journey-shapes.js?v=web-18';
+import {groundMeters} from './metro-time.js?v=web-19';
+import {decodeShape} from './journey-shapes.js?v=web-19';
 export const WALK_PROVIDER='fossgis-osrm-foot';
 export const walkingPosition=p=>{const a=Array.isArray(p)?p:[p?.latitude,p?.longitude];groundMeters(a,a);if(a.length!==2||a[0]<32||a[0]>40||a[1]<123||a[1]>133)throw Error('walking-outside');return a.map(n=>Math.round(n*1e6)/1e6);};
 export function validateWalkingRoute(route){

@@ -1,7 +1,7 @@
 const requests=new Map();
 export function loadJourneyShapes(region){
   if(!['seoul','busan','daegu','daejeon','gwangju'].includes(region))return Promise.reject(Error('invalid-shape-region'));
-  if(!requests.has(region))requests.set(region,fetch(new URL(`./journey-shapes-${region}.json?v=web-18`,import.meta.url)).then(r=>{if(!r.ok)throw Error('shape-data');return r.json();}).then(data=>{if(data.v!==1||data.region!==region||!data.bus||!data.subway)throw Error('shape-data');return data;}).catch(e=>{requests.delete(region);throw e;}));
+  if(!requests.has(region))requests.set(region,fetch(new URL(`./journey-shapes-${region}.json?v=web-19`,import.meta.url)).then(r=>{if(!r.ok)throw Error('shape-data');return r.json();}).then(data=>{if(data.v!==1||data.region!==region||!data.bus||!data.subway)throw Error('shape-data');return data;}).catch(e=>{requests.delete(region);throw e;}));
   return requests.get(region);
 }
 export function decodeShape(value){
