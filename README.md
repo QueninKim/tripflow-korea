@@ -297,3 +297,14 @@ Real browser QA used public landmarks and actual provider requests, without requ
 Seoul Metro’s 2025-03 corridor distances/times replace the default walk allowance for 136 matched records at 70 transfer stations in automatic search, mixed journeys and subway timing. Train waits and entry/exit allowances stay separate. The official 2024-03 hosted guide snapshot supplies 100 original interior diagrams at 67 stations: open a transfer marker or expand an indoor guide card, switch line-specific guides, and zoom/pan inside the app. These are original floor/corridor diagrams, not geographic indoor navigation or selected-route GPS polylines. Unsupported transfers remain clearly estimated. The source page also offers a newer 2026-08 downloadable archive.
 
 `IndoorTransferSources.json` and `dist/indoor-sources.html` record matching, exclusions, licensing, source dates and coverage. Saved pedestrian snapshots use a versioned source-inclusive SHA-256 identity; web-19 snapshots preserve their original time until explicit recalculation. No new Apple build or native schema is required.
+
+
+### web-21: intercity timetables
+
+`기차·지역 간 이동` searches 1,077 real Korail train services effective 2026-11-01 across 256 station identities. Operating weekdays, overnight arrivals, train classes and station order are applied. Matching official 2024 rail-corridor distances are labelled as references; missing or ambiguous distances stay blank. Published timetables and TAGO data do not imply live seats or delays.
+
+A chosen service applies access + waiting until departure + ride + egress to an existing movement, or appends verified railway station places. An empty day starts before boarding. Automatic scheduled movements are reconciled after prior itinerary edits; missed or date-mismatched services become unknown and require review. Native bridge/schema stays at 1. Bus and flight booked-service entry supports the same scheduling rules, explicit next-day arrivals and optional entered distance.
+
+The free TAGO gateway and setup instructions are in `server/timetable-gateway.mjs` and `INTERCITY_API_SETUP.md`; no key or backend is activated. `intercity-config.json` defaults to the published file. Only station names/date are sent if a server is configured.
+
+Source provenance, SHA-256 hashes and exclusions are in `IntercitySources.json`. Optional `python3 scripts/build-rail-snapshot.py` downloads the four official source files, verifies hashes and rebuilds the committed snapshot. It never fetches data on behalf of app visitors.

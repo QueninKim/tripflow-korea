@@ -1,4 +1,4 @@
-import {indoorData} from './indoor-data.js?v=web-20';
+import {indoorData} from './indoor-data.js?v=web-21';
 export {indoorData};
 const key=(station,from,to,target)=>[station,from,to,target].join('|'),index=new Map();
 for(const e of indoorData.entries)index.set(key(e.fromStation,e.from,e.to,e.toStation),e);

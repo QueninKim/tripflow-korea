@@ -1,10 +1,10 @@
-import {quoteTransitPlan,transitWalking,pedestrianSectionsHTML} from './transit-walking.js?v=web-20';
-import {readTransitNote,transitStatus} from './transit-note.js?v=web-20';
-import {mixedData,busRegionID,estimateMixedTime,validateMixedPlan} from './mixed-core.js?v=web-20';
-import {quoteAutoRoute,validateAutoPlan} from './auto-core.js?v=web-20';
-import {validateBusPlan} from './bus-core.js?v=web-20';
-import {validateMetroPlan} from './metro-core.js?v=web-20';
-import {createJourneyMap,journeyMapLegend,journeyMapNote} from './journey-map.js?v=web-20';
+import {quoteTransitPlan,transitWalking,pedestrianSectionsHTML} from './transit-walking.js?v=web-21';
+import {readTransitNote,transitStatus} from './transit-note.js?v=web-21';
+import {mixedData,busRegionID,estimateMixedTime,validateMixedPlan} from './mixed-core.js?v=web-21';
+import {quoteAutoRoute,validateAutoPlan} from './auto-core.js?v=web-21';
+import {validateBusPlan} from './bus-core.js?v=web-21';
+import {validateMetroPlan} from './metro-core.js?v=web-21';
+import {createJourneyMap,journeyMapLegend,journeyMapNote} from './journey-map.js?v=web-21';
 export function createJourneyViewer(ctx){
   const {t,h,modal,modalTop,openModal}=ctx;let request=0,map;
   const label=s=>t(s.en||s.ko,s.ko);
@@ -15,7 +15,7 @@ export function createJourneyViewer(ctx){
     if(!parsed.plan){ctx.toast(t('No saved route for this movement.','저장된 이동경로가 없습니다.'));return;}
     openModal(`${modalTop(t('Saved route map','저장한 경로 지도'))}<p role="status">${t('Opening your selected route…','선택한 경로를 불러오는 중…')}</p>`);modal.classList.add('network-modal','journey-view-modal');
     try{
-      const id=busRegionID(parsed.plan.region),files=['metro-data.json','metro-times.json',`bus-${id}.json`],values=await Promise.all(files.map(file=>fetch(new URL('./'+file+'?v=web-20',import.meta.url)).then(r=>{if(!r.ok)throw Error('data');return r.json();})));
+      const id=busRegionID(parsed.plan.region),files=['metro-data.json','metro-times.json',`bus-${id}.json`],values=await Promise.all(files.map(file=>fetch(new URL('./'+file+'?v=web-21',import.meta.url)).then(r=>{if(!r.ok)throw Error('data');return r.json();})));
       if(token!==request||!modal.open||!modal.classList.contains('journey-view-modal'))return;
       const data=mixedData(...values),plan=parsed.plan,fromPlace=origin?.place,toPlace=end?.place;let quote;
       if(parsed.kind==='auto')validateAutoPlan(data,plan);else if(parsed.kind==='bus')validateBusPlan(data.bus,plan);else if(parsed.kind==='subway')validateMetroPlan(data.network,plan);else validateMixedPlan(data,plan);

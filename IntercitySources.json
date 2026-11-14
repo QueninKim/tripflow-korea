@@ -1,0 +1,66 @@
+{
+  "version": "web-21",
+  "timetableVersion": "korail-20261101",
+  "effectiveFrom": "2026-11-01",
+  "checkedAt": "2026-11-14",
+  "sourceURL": "https://www.korail.com/com/userBoard.do?mode=list&schBcid=ticketTable",
+  "trainServices": 1077,
+  "stations": 256,
+  "locatedStations": 185,
+  "distancePairs": 1975,
+  "distanceDate": "2024-09-01",
+  "locationDate": "2024-04-01",
+  "excludedServices": [
+    {
+      "source": "regional",
+      "sheet": "영동선",
+      "row": 9,
+      "col": 7,
+      "no": 1772,
+      "days": "중앙선 경유"
+    },
+    {
+      "source": "regional",
+      "sheet": "영동선",
+      "row": 9,
+      "col": 11,
+      "no": 1774,
+      "days": "중앙선 경유"
+    }
+  ],
+  "liveAPIActivated": false,
+  "nativeRebuildRequired": false,
+  "sources": [
+    {
+      "filename": "ktx-20261101.xlsx",
+      "url": "https://www.korail.com/file/cubedata/COMMON/jfile/202610/13/202610131a130b1ac0b200.xlsx",
+      "sha256": "25a8f8781a5840543dc41e937b717255ad498e98837586acba924775b5f63a92",
+      "bytes": 640578
+    },
+    {
+      "filename": "regional-20261101.xlsx",
+      "url": "https://www.korail.com/file/cubedata/COMMON/jfile/202610/12/202610121a13004f8b1730.xlsx",
+      "sha256": "4d560624710e893e3dbeea0c321ce43e52488db72f3b21cfec1098711ac9b413",
+      "bytes": 371201
+    },
+    {
+      "filename": "rail-distance-20240901.xlsx",
+      "url": "https://www.data.go.kr/cmm/cmm/fileDownload.do?atchFileId=FILE_000000003025367&fileDetailSn=1",
+      "sha256": "5514e0eefde06d44171c34c69553328b7d93db1cd5611d8dacf79888e12e4697",
+      "bytes": 267464
+    },
+    {
+      "filename": "station-locations.csv",
+      "url": "https://www.data.go.kr/cmm/cmm/fileDownload.do?atchFileId=FILE_000000002898194&fileDetailSn=1",
+      "sha256": "5efb7af37f800b6632c19bb050ce81dce4ab0ae54998b718e581c377e2f232aa",
+      "bytes": 7453
+    }
+  ],
+  "notes": [
+    "Published timetable operating weekdays and station order are preserved. Empty regular-train remarks mean daily per the source table conventions; unparsed route-only remarks are excluded.",
+    "Pangyo Gyeonggi/Chungnam are distinct; Hongseong arrival/departure headings are normalized to one station, preserving separate arrival/departure values when both exist.",
+    "Only directly matching official corridor distance tables are used; mixed highspeed/conventional paths without a clear match remain unavailable. This is a corridor reference, not a per-train track measurement.",
+    "Coordinates are used only from the matched official railway CSV. The geographically inconsistent Haengsin coordinate is excluded. No same-name metro-station coordinate is substituted.",
+    "Bus and flight timetables/distances are manually entered booked-service facts until their separate APIs are activated."
+  ]
+}

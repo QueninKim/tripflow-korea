@@ -1,4 +1,4 @@
-import {indoorGuides,indoorTime} from './indoor-core.js?v=web-20';
+import {indoorGuides,indoorTime} from './indoor-core.js?v=web-21';
 export function createIndoorPanel({element,quote,t,library=window.L,imageFactory=()=>new Image()}){
   const transfers=(quote.connections||[]).flatMap((c,index)=>c.indoor?[{...c,index,fromLine:quote.details[index],toLine:quote.details[index+1]}]:[]);
   if(!transfers.length)return {open(){},destroy(){}};

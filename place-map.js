@@ -1,4 +1,4 @@
-import {createLocationOverlay} from './location-overlay.js?v=web-20';
+import {createLocationOverlay} from './location-overlay.js?v=web-21';
 export function createPlaceMapViewer(ctx){
   const {modal,t,h,modalTop,openModal}=ctx;let map,overlay,observer,places=[],selected=0;
   function destroy(){overlay?.destroy();overlay=null;observer?.disconnect();observer=null;map?.remove();map=null;}

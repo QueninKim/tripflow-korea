@@ -1,8 +1,8 @@
-import {walkingRoutes} from './walking-routes.js?v=web-20';
-import {walkingQuote} from './walking-core.js?v=web-20';
-import {readTransitNote,transitStatus} from './transit-note.js?v=web-20';
-import {groundMeters} from './metro-time.js?v=web-20';
-import {createJourneyMap} from './journey-map.js?v=web-20';
+import {walkingRoutes} from './walking-routes.js?v=web-21';
+import {walkingQuote} from './walking-core.js?v=web-21';
+import {readTransitNote,transitStatus} from './transit-note.js?v=web-21';
+import {groundMeters} from './metro-time.js?v=web-21';
+import {createJourneyMap} from './journey-map.js?v=web-21';
 export function createWalkingViewer(ctx){
   const {modal,t,h,openModal,modalTop}=ctx;let token=0,map;
   function render(from,to,route,saved){

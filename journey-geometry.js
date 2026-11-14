@@ -1,5 +1,5 @@
-import {validateWalkingRoute} from './walking-core.js?v=web-20';
-import {rideShape} from './journey-shapes.js?v=web-20';
+import {validateWalkingRoute} from './walking-core.js?v=web-21';
+import {rideShape} from './journey-shapes.js?v=web-21';
 export const journeyStyles={
   bus:{color:'#2368dc',weight:6,dashArray:null},
   subway:{color:'#8c39c7',weight:7,dashArray:null},

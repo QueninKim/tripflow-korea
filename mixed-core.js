@@ -1,7 +1,7 @@
-import {indoorTransfer} from './indoor-core.js?v=web-20';
-import {validateMetroPlan,metroPaths,metroTimingText} from './metro-core.js?v=web-20';
-import {validateBusPlan,busGraph,rideSeconds} from './bus-core.js?v=web-20';
-import {groundMeters,estimateMetroTime} from './metro-time.js?v=web-20';
+import {indoorTransfer} from './indoor-core.js?v=web-21';
+import {validateMetroPlan,metroPaths,metroTimingText} from './metro-core.js?v=web-21';
+import {validateBusPlan,busGraph,rideSeconds} from './bus-core.js?v=web-21';
+import {groundMeters,estimateMetroTime} from './metro-time.js?v=web-21';
 const START='[TripFlow Mixed v1]',END='[/TripFlow Mixed]';
 export const metroRegionID=id=>id==='seoul'?'capital':id;
 export const busRegionID=id=>id==='capital'?'seoul':id;

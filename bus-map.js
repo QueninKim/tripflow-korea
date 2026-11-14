@@ -1,4 +1,4 @@
-import {busGraph,busStopName} from './bus-core.js?v=web-20';
+import {busGraph,busStopName} from './bus-core.js?v=web-21';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export function createBusMap({element,region,line,all=false,route=[],walks=[],from,to,vias=[],focus,onStation,onCamera,camera,t,lang}){
   const g=busGraph(region),lat0=Object.values(region.stops)[0].lat,cos=Math.cos(lat0*Math.PI/180),points=Object.fromEntries(Object.entries(region.stops).map(([id,s])=>[id,[s.lng*cos*111200,-s.lat*111200]]));

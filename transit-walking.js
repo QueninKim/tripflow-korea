@@ -1,12 +1,12 @@
-import {indoorTime} from './indoor-core.js?v=web-20';
-import {walkingRoutes} from './walking-routes.js?v=web-20';
-import {validateWalkingRoute,walkingRouteID} from './walking-core.js?v=web-20';
-import {groundMeters} from './metro-time.js?v=web-20';
-import {quoteAutoRoute,autoTimingSnapshot,autoSummary} from './auto-core.js?v=web-20';
-import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,mixedData,busRegionID} from './mixed-core.js?v=web-20';
-import {busSummary} from './bus-core.js?v=web-20';
-import {metroSummary} from './metro-core.js?v=web-20';
-import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-20';
+import {indoorTime} from './indoor-core.js?v=web-21';
+import {walkingRoutes} from './walking-routes.js?v=web-21';
+import {validateWalkingRoute,walkingRouteID} from './walking-core.js?v=web-21';
+import {groundMeters} from './metro-time.js?v=web-21';
+import {quoteAutoRoute,autoTimingSnapshot,autoSummary} from './auto-core.js?v=web-21';
+import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,mixedData,busRegionID} from './mixed-core.js?v=web-21';
+import {busSummary} from './bus-core.js?v=web-21';
+import {metroSummary} from './metro-core.js?v=web-21';
+import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-21';
 const CACHE='tripflow-transit-pedestrian-v1',point=p=>[p.latitude??p.lat,p.longitude??p.lng],place=p=>({latitude:point(p)[0],longitude:point(p)[1]});
 const digest=async value=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(value))))].map(n=>n.toString(16).padStart(2,'0')).join('');
 export function allocateTransitSeconds(seconds){
@@ -82,7 +82,7 @@ export async function enrichTransitResult(data,from,to,result,{signal,onProgress
   const {candidates,...baseResult}=result;return {...baseResult,minutes:quote.minutes,quote,services:quote.details.map(d=>({ko:d.ko,en:d.en})),patch:{...result.patch,travelMinutes:quote.minutes,note:mergeTransitNote(result.patch.note,plan,transitPlanSummary(data,parsed.kind,plan,quote),parsed.kind)}};
 
 }
-const requests=new Map();export async function loadTransitWalkingData(region){const id=busRegionID(region);if(!requests.has(id))requests.set(id,Promise.all(['metro-data.json','metro-times.json',`bus-${id}.json`].map(file=>fetch('./'+file+'?v=web-20').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).then(values=>mixedData(...values)).catch(e=>{requests.delete(id);throw e;}));return requests.get(id);}
+const requests=new Map();export async function loadTransitWalkingData(region){const id=busRegionID(region);if(!requests.has(id))requests.set(id,Promise.all(['metro-data.json','metro-times.json',`bus-${id}.json`].map(file=>fetch('./'+file+'?v=web-21').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).then(values=>mixedData(...values)).catch(e=>{requests.delete(id);throw e;}));return requests.get(id);}
 export function pedestrianSectionsHTML(quote,t,h){
   if(!quote.pedestrian)return '';const p=quote.pedestrian,labels={access:t('Walk to board','정류장·역까지 도보'),egress:t('Walk to destination','도착지까지 도보'),transfer:t('Walk transfer','역외·정류장 환승 도보')};
   return `<ol class="pedestrian-sections">${p.paths.map(item=>`<li>${labels[item.role]} · ${Math.round(item.route.meters)}m · ${Math.ceil(item.route.seconds/60)}${t(' min · queried path','분 · 실제 보행길')}</li>`).join('')}${(p.indoorTransfers||[]).map(item=>`<li class="${item.indoor?'indoor-official':'indoor-estimate'}">${h(item.name)} · ${h(item.fromLine||'')} → ${h(item.toLine||'')} · ${item.indoor?item.indoor.meters+'m · ':''}${indoorTime(item.seconds,t)} · ${item.indoor?t('Seoul Metro distance-based time','서울교통공사 거리 기준'):t('Estimated · interior data unavailable','예상 · 역내 통로 자료 없음')}</li>`).join('')}${p.modeledSeconds>0?`<li class="indoor-estimate">${t('Station entry/exit and boarding allowances','역 진입·출구·승차 여유')} · ${Math.ceil(p.modeledSeconds/60)}${t(' min · estimated separately','분 · 별도 예상')}</li>`:''}</ol>`;

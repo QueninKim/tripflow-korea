@@ -1,15 +1,16 @@
-import {enrichTransitResult} from './transit-walking.js?v=web-20';
-import {walkingRoutes} from './walking-routes.js?v=web-20';
-import {readTransitNote} from './transit-note.js?v=web-20';
-import {hasSelectedTransit,calculateTransitMovement,calculateWalkingMovement,compareMovementTimes} from './transit-refresh-core.js?v=web-20';
-import {inferAutoRegion} from './auto-core.js?v=web-20';
-import {mixedData,busRegionID} from './mixed-core.js?v=web-20';
-import {groundMeters} from './metro-time.js?v=web-20';
+import {scheduledMovement} from './intercity-schedule.js?v=web-21';
+import {enrichTransitResult} from './transit-walking.js?v=web-21';
+import {walkingRoutes} from './walking-routes.js?v=web-21';
+import {readTransitNote} from './transit-note.js?v=web-21';
+import {hasSelectedTransit,calculateTransitMovement,calculateWalkingMovement,compareMovementTimes} from './transit-refresh-core.js?v=web-21';
+import {inferAutoRegion} from './auto-core.js?v=web-21';
+import {mixedData,busRegionID} from './mixed-core.js?v=web-21';
+import {groundMeters} from './metro-time.js?v=web-21';
 export function createTransitRefresher(ctx){
   const {t,h,modal,modalTop,openModal,toast}=ctx,buses=new Map();let commonRequest,job,sequence=0,worker,stopGroup,internal=false;
   const busy=()=>job&&['loading','calculating','saving'].includes(job.stage),current=active=>job===active&&active.token===sequence&&modal.open&&modal.classList.contains('transit-refresh-modal');
   const unchanged=active=>ctx.getTripID()===active.tripID&&ctx.getDay()?.id===active.dayID&&JSON.stringify(ctx.getDay())===active.before;
-  const reason=code=>({'outside-region':t('Outside the supported regional transit networks','지원하는 지역 교통망 밖의 구간입니다'),'saved-route-invalid':t('Review the saved route against current data','저장한 경로를 현재 자료로 다시 확인해주세요'),'no-access':t('No usable stop or station near an endpoint','출발·도착지 근처에 역·정류장이 없습니다'),'no-route':t('No connected transit route within the search limits','검색 범위 안에 연결된 대중교통 경로가 없습니다'),'search-limit':t('Search too broad; narrow it in Directions','검색 범위가 큽니다. 길찾기에서 범위를 조정해주세요'),timeout:t('Search timed out; retry this section','조회 시간이 초과됐습니다. 이 구간을 다시 조회해주세요'),data:t('Could not load regional transit data','지역 교통 자료를 불러오지 못했습니다'),'pedestrian-storage':t('Could not save walking paths on this device','보행 경로를 기기에 저장하지 못했습니다'),'pedestrian-cache':t('Saved walking paths need a new lookup','저장된 보행 경로를 다시 조회해주세요'),'walking-unavailable':t('Walking route service is unavailable. Retry when connected.','보행 경로를 조회하지 못했습니다. 연결 후 다시 조회해주세요.'),'walking-no-route':t('No connected pedestrian path was found','연결된 보행 경로가 없습니다'),'walking-snap':t('No suitable pedestrian access near an endpoint','장소 근처의 보행길 연결 지점을 확인해주세요'),'walking-timeout':t('Walking lookup timed out','보행 경로 조회 시간이 초과됐습니다'),'walking-response':t('The walking route response could not be verified','보행 경로 응답을 확인하지 못했습니다'),'walking-rate-limit':t('Walking service is busy. Retry later.','보행 경로 서비스가 혼잡합니다. 잠시 후 다시 조회해주세요.'),'walking-too-far':t('Walking lookup supports endpoints within 50 km','도보 조회는 50km 이내 구간을 지원합니다'),'walking-outside':t('Choose walking endpoints in Korea','국내 출발·도착지를 선택해주세요'),'walk-too-long':t('Beyond the walking estimate range','도보 예상시간 범위를 넘습니다'),'invalid-position':t('Location coordinates are unavailable','장소의 위치 정보가 없습니다'),'note-too-long':t('Route and note exceed the saved note limit','경로와 메모가 저장 한도를 넘습니다'),changed:t('Itinerary changed. Run the lookup again.','일정이 바뀌었습니다. 다시 조회해주세요.')})[code]||t('Could not calculate this section','이 구간을 계산하지 못했습니다');
+  const reason=code=>({'intercity-day-mismatch':t('This scheduled service belongs to a different date','선택한 승차편의 날짜가 현재 일정과 다릅니다'),'intercity-missed':t('The scheduled departure is too early for the changed itinerary','변경된 일정으로는 선택한 출발 시각에 탑승할 수 없습니다'),'intercity-unknown-arrival':t('Set the earlier movement times first','앞 구간의 이동시간을 먼저 입력해주세요'),'outside-region':t('Intercity journey: choose a train, bus or flight in Directions','지역 간 구간입니다. 길찾기에서 기차·버스·항공편을 선택해주세요.'),'saved-route-invalid':t('Review the saved route against current data','저장한 경로를 현재 자료로 다시 확인해주세요'),'no-access':t('No usable stop or station near an endpoint','출발·도착지 근처에 역·정류장이 없습니다'),'no-route':t('No connected transit route within the search limits','검색 범위 안에 연결된 대중교통 경로가 없습니다'),'search-limit':t('Search too broad; narrow it in Directions','검색 범위가 큽니다. 길찾기에서 범위를 조정해주세요'),timeout:t('Search timed out; retry this section','조회 시간이 초과됐습니다. 이 구간을 다시 조회해주세요'),data:t('Could not load regional transit data','지역 교통 자료를 불러오지 못했습니다'),'pedestrian-storage':t('Could not save walking paths on this device','보행 경로를 기기에 저장하지 못했습니다'),'pedestrian-cache':t('Saved walking paths need a new lookup','저장된 보행 경로를 다시 조회해주세요'),'walking-unavailable':t('Walking route service is unavailable. Retry when connected.','보행 경로를 조회하지 못했습니다. 연결 후 다시 조회해주세요.'),'walking-no-route':t('No connected pedestrian path was found','연결된 보행 경로가 없습니다'),'walking-snap':t('No suitable pedestrian access near an endpoint','장소 근처의 보행길 연결 지점을 확인해주세요'),'walking-timeout':t('Walking lookup timed out','보행 경로 조회 시간이 초과됐습니다'),'walking-response':t('The walking route response could not be verified','보행 경로 응답을 확인하지 못했습니다'),'walking-rate-limit':t('Walking service is busy. Retry later.','보행 경로 서비스가 혼잡합니다. 잠시 후 다시 조회해주세요.'),'walking-too-far':t('Walking lookup supports endpoints within 50 km','도보 조회는 50km 이내 구간을 지원합니다'),'walking-outside':t('Choose walking endpoints in Korea','국내 출발·도착지를 선택해주세요'),'walk-too-long':t('Beyond the walking estimate range','도보 예상시간 범위를 넘습니다'),'invalid-position':t('Location coordinates are unavailable','장소의 위치 정보가 없습니다'),'note-too-long':t('Route and note exceed the saved note limit','경로와 메모가 저장 한도를 넘습니다'),changed:t('Itinerary changed. Run the lookup again.','일정이 바뀌었습니다. 다시 조회해주세요.')})[code]||t('Could not calculate this section','이 구간을 계산하지 못했습니다');
   const chosenResult=(active,m)=>(active.choices[m.index]==='walking'||active.results[m.index]?.method==='same-place')?active.walking[m.index]:active.results[m.index];
   function comparisonCard(active,m){
     const r=active.results[m.index],walk=active.walking[m.index],applied=active.savedChoices[m.index],canChoose=active.stage==='done',comparison=compareMovementTimes(r,walk);
@@ -32,14 +33,14 @@ export function createTransitRefresher(ctx){
     }finally{internal=false;}
   }
   function cancel(){sequence++;job?.walkingAbort?.abort();stopGroup?.(Error('cancelled'));worker?.terminate();worker=null;if(job&&busy())job.stage='cancelled';}
-  async function loadCommon(){if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json'].map(file=>fetch('./'+file+'?v=web-20').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});return commonRequest;}
-  async function loadBus(id){if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-20');if(!r.ok)throw Error('data');buses.set(id,await r.json());}return buses.get(id);}
+  async function loadCommon(){if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json'].map(file=>fetch('./'+file+'?v=web-21').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});return commonRequest;}
+  async function loadBus(id){if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-21');if(!r.ok)throw Error('data');buses.set(id,await r.json());}return buses.get(id);}
   function receive(active,result){if(!current(active))return;active.results[result.index]=result;draw();}
   async function fallback(active,data,movements){
     for(const m of movements){await new Promise(r=>setTimeout(r,0));if(!current(active))return;let result;try{result={...calculateTransitMovement(data,m.from,m.to),index:m.index};}catch(e){result={id:m.to.id,from:m.from.id,index:m.index,error:e.message};}receive(active,result);}
   }
   function inWorker(active,network,times,bus,movements){
-    return new Promise((resolve,reject)=>{let timer,settled=false,local;try{local=new Worker(new URL('./transit-refresh-worker.js?v=web-20',import.meta.url),{type:'module'});}catch{reject(Error('worker-error'));return;}worker=local;
+    return new Promise((resolve,reject)=>{let timer,settled=false,local;try{local=new Worker(new URL('./transit-refresh-worker.js?v=web-21',import.meta.url),{type:'module'});}catch{reject(Error('worker-error'));return;}worker=local;
       const finish=error=>{if(settled)return;settled=true;clearTimeout(timer);local.terminate();if(worker===local)worker=null;stopGroup=null;error?reject(error):resolve();};stopGroup=finish;
       const deadline=()=>{clearTimeout(timer);timer=setTimeout(()=>finish(Error('timeout')),30000);};deadline();
       local.onmessage=e=>{const message=e.data;if(!current(active)||message.requestId!==active.token)return;if(message.type==='result'){deadline();receive(active,message.result);}else if(message.type==='done')finish();else if(message.type==='error')finish(Error(message.error));};local.onerror=()=>finish(Error('worker-error'));
@@ -72,6 +73,7 @@ export function createTransitRefresher(ctx){
       const [network,times]=await loadCommon();if(!current(active))return;const groups=new Map();active.stage='calculating';
       for(const m of movements){
         try{
+          if(readTransitNote(m.to.note).kind==='intercity'){receive(active,{...scheduledMovement(ctx.getDay(),ctx.getDay().stops.findIndex(s=>s.id===m.to.id),ctx.getDate()),index:m.index});continue;}
           if(groundMeters([m.from.place.latitude,m.from.place.longitude],[m.to.place.latitude,m.to.place.longitude])<5){receive(active,{...calculateTransitMovement(null,m.from,m.to),index:m.index});continue;}
           const parsed=readTransitNote(m.to.note),selected=hasSelectedTransit(parsed,m.from,m.to);let id;
           if(selected)id=busRegionID(parsed.plan.region);else{const inferred=inferAutoRegion(network,times,m.from.place,m.to.place);if(inferred.maxDistance>60000)throw Error('outside-region');id=busRegionID(inferred.region);}

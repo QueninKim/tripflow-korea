@@ -1,6 +1,6 @@
-import {indoorTransfer} from './indoor-core.js?v=web-20';
-import {metroPaths,validateMetroPlan} from './metro-core.js?v=web-20';
-import {arrivals} from './core.js?v=web-20';
+import {indoorTransfer} from './indoor-core.js?v=web-21';
+import {metroPaths,validateMetroPlan} from './metro-core.js?v=web-21';
+import {arrivals} from './core.js?v=web-21';
 export function groundMeters(a,b){
   if(!a||!b||![...a,...b].every(Number.isFinite)||Math.abs(a[0])>90||Math.abs(b[0])>90||Math.abs(a[1])>180||Math.abs(b[1])>180)throw Error('invalid-position');
   const rad=Math.PI/180,p=(b[0]-a[0])*rad,q=(b[1]-a[1])*rad;

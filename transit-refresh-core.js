@@ -1,10 +1,10 @@
-import {validateWalkingRoute} from './walking-core.js?v=web-20';
-import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-20';
-import {recommendAutoRoutes,autoOptions,autoTimingSnapshot,autoSummary,validateAutoPlan,quoteAutoRoute} from './auto-core.js?v=web-20';
-import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan} from './mixed-core.js?v=web-20';
-import {validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-20';
-import {validateMetroPlan,metroSummary} from './metro-core.js?v=web-20';
-import {estimateMetroTime,timingSnapshot,groundMeters} from './metro-time.js?v=web-20';
+import {validateWalkingRoute} from './walking-core.js?v=web-21';
+import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-21';
+import {recommendAutoRoutes,autoOptions,autoTimingSnapshot,autoSummary,validateAutoPlan,quoteAutoRoute} from './auto-core.js?v=web-21';
+import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan} from './mixed-core.js?v=web-21';
+import {validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-21';
+import {validateMetroPlan,metroSummary} from './metro-core.js?v=web-21';
+import {estimateMetroTime,timingSnapshot,groundMeters} from './metro-time.js?v=web-21';
 export const hasSelectedTransit=(parsed,from,to)=>!!parsed.plan&&parsed.kind!=='walking'&&parsed.plan.from===from.id&&parsed.plan.to===to.id&&!(parsed.kind==='auto'&&parsed.plan.routeMode==='walking');
 export function calculateWalkingMovement(from,to,value){
   const route=validateWalkingRoute(value);if(groundMeters(route.from,[from.place.latitude,from.place.longitude])>1||groundMeters(route.to,[to.place.latitude,to.place.longitude])>1||!route.id)throw Error('walking-endpoints');

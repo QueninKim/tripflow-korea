@@ -1,21 +1,21 @@
-import {transitWalking,pedestrianSectionsHTML} from './transit-walking.js?v=web-20';
-import {walkingRoutes} from './walking-routes.js?v=web-20';
-import {walkingQuote} from './walking-core.js?v=web-20';
-import {locationMessage} from './current-location.js?v=web-20';
-import {mixedData,busRegionID} from './mixed-core.js?v=web-20';
-import {inferAutoRegion,recommendAutoRoutes,autoOptions,autoTimingSnapshot,validateAutoPlan,sameAutoPlace,quoteAutoRoute} from './auto-core.js?v=web-20';
-import {readTransitNote} from './transit-note.js?v=web-20';
-import {createJourneyMap,journeyMapLegend,journeyMapNote} from './journey-map.js?v=web-20';
-import {projectedArrivals} from './metro-time.js?v=web-20';
-import {uuid,clock} from './core.js?v=web-20';
+import {transitWalking,pedestrianSectionsHTML} from './transit-walking.js?v=web-21';
+import {walkingRoutes} from './walking-routes.js?v=web-21';
+import {walkingQuote} from './walking-core.js?v=web-21';
+import {locationMessage} from './current-location.js?v=web-21';
+import {mixedData,busRegionID} from './mixed-core.js?v=web-21';
+import {inferAutoRegion,recommendAutoRoutes,autoOptions,autoTimingSnapshot,validateAutoPlan,sameAutoPlace,quoteAutoRoute} from './auto-core.js?v=web-21';
+import {readTransitNote} from './transit-note.js?v=web-21';
+import {createJourneyMap,journeyMapLegend,journeyMapNote} from './journey-map.js?v=web-21';
+import {projectedArrivals} from './metro-time.js?v=web-21';
+import {uuid,clock} from './core.js?v=web-21';
 export function createAutoPlanner(ctx){
   const {t,h,modal,modalTop,openModal,toast}=ctx,buses=new Map();let common,commonRequest,draft,data,map,worker,timer,walkingAbort,requestID=0,pickID=0;
   const label=s=>t(s.en||s.ko,s.ko),chosen=()=>draft.routes[draft.choice],placeLabel=p=>p?ctx.placeName(p):t('Choose a place','장소 선택');
   const places=()=>{const map=new Map(ctx.getPlaces().map(p=>[p.id,p]));for(const p of [draft?.from,draft?.to,...draft?.searchResults||[]])if(p)map.set(p.id,p);return [...map.values()];};
   async function load(a,b){
-    if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json','bus-index.json'].map(file=>fetch('./'+file+'?v=web-20').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});common=await commonRequest;
+    if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json','bus-index.json'].map(file=>fetch('./'+file+'?v=web-21').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});common=await commonRequest;
     const region=inferAutoRegion(common[0],common[1],a,b);if(region.maxDistance>60000)throw Error('outside-region');const id=busRegionID(region.region);
-    if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-20');if(!r.ok)throw Error('data');buses.set(id,await r.json());}return mixedData(common[0],common[1],buses.get(id));
+    if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-21');if(!r.ok)throw Error('data');buses.set(id,await r.json());}return mixedData(common[0],common[1],buses.get(id));
   }
   function stopSearch(){requestID++;walkingAbort?.abort();worker?.terminate();worker=null;clearTimeout(timer);if(draft)draft.busy=false;}
   function matchesMovement(){const d=ctx.getDay(),i=d?.stops.findIndex(s=>s.id===draft.target);return Number.isInteger(i)&&i>0&&sameAutoPlace(d.stops[i-1].place,draft.from)&&sameAutoPlace(d.stops[i].place,draft.to);}
@@ -60,7 +60,7 @@ export function createAutoPlanner(ctx){
         if(!routes.length)draft.error='walking-unavailable';draw();
       };
       const fallback=()=>setTimeout(()=>{if(token!==requestID)return;try{finish({result:recommendAutoRoutes(data,query,{maxVisited:600000})});}catch(e){finish({error:e.message});}},0);
-      if(typeof Worker==='function'){try{worker=new Worker(new URL('./auto-worker.js?v=web-20',import.meta.url),{type:'module'});worker.onmessage=e=>{if(e.data.requestId===token)finish(e.data);};worker.onerror=()=>{worker?.terminate();worker=null;fallback();};worker.postMessage(payload);timer=setTimeout(()=>finish({error:'timeout'}),30000);}catch{fallback();}}
+      if(typeof Worker==='function'){try{worker=new Worker(new URL('./auto-worker.js?v=web-21',import.meta.url),{type:'module'});worker.onmessage=e=>{if(e.data.requestId===token)finish(e.data);};worker.onerror=()=>{worker?.terminate();worker=null;fallback();};worker.postMessage(payload);timer=setTimeout(()=>finish({error:'timeout'}),30000);}catch{fallback();}}
       else fallback();
     }catch(error){if(token!==requestID)return;draft.busy=false;draft.error=error.message;draw();}
   }

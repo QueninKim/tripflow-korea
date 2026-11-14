@@ -1,8 +1,8 @@
-import {createIndoorPanel} from './indoor-map.js?v=web-20';
-import {indoorTime} from './indoor-core.js?v=web-20';
-import {createLocationOverlay} from './location-overlay.js?v=web-20';
-import {journeyGeometry,journeyStyles} from './journey-geometry.js?v=web-20';
-import {loadJourneyShapes} from './journey-shapes.js?v=web-20';
+import {createIndoorPanel} from './indoor-map.js?v=web-21';
+import {indoorTime} from './indoor-core.js?v=web-21';
+import {createLocationOverlay} from './location-overlay.js?v=web-21';
+import {journeyGeometry,journeyStyles} from './journey-geometry.js?v=web-21';
+import {loadJourneyShapes} from './journey-shapes.js?v=web-21';
 export function journeyMapLegend(t){return `<div class="journey-map-legend" aria-label="${t('Route map legend','경로 지도 범례')}"><span><i class="journey-key-bus"></i>${t('Bus','버스')}</span><span><i class="journey-key-subway"></i>${t('Subway','지하철')}</span><span><i class="journey-key-walking"></i>${t('Walk','도보')}</span><small>${t('Numbers show boarding order','숫자는 탑승 순서')}</small></div>`;}
 export function journeyMapNote(t){return t('Bus lines follow official road geometry; subway lines follow mapped tracks. Missing source sections are left blank. Green walking lines follow queried outdoor footpaths. Tap an internal-transfer marker to open the official station interior diagram. Official corridor distance/time is used where matched; other internal walks remain estimates.','버스는 공식 운행 도로, 지하철은 지도에 기록된 선로를 따라 표시합니다. 자료가 없는 구간은 비워 둡니다. 초록색 도보선은 조회된 실외 보행길입니다. 역내 환승 표지를 누르면 공식 역 내부 안내도를 볼 수 있습니다. 일치하는 공식 환승 거리·시간을 반영하며, 자료가 없는 역내 이동은 예상입니다. 보행길은 가까운 연결 지점 기준이며 출입구·임시통제는 다를 수 있습니다.')+` <a href="./route-shape-sources.html" target="_blank" rel="noopener">${t('Sources & coverage','출처·표시 범위')} ↗</a>`;}
 export function createJourneyMap(options){
