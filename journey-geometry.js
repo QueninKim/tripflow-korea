@@ -1,4 +1,5 @@
-import {rideShape} from './journey-shapes.js?v=web-17';
+import {validateWalkingRoute} from './walking-core.js?v=web-18';
+import {rideShape} from './journey-shapes.js?v=web-18';
 export const journeyStyles={
   bus:{color:'#2368dc',weight:6,dashArray:null},
   subway:{color:'#8c39c7',weight:7,dashArray:null},
@@ -23,7 +24,9 @@ export function journeyGeometry(quote,{fromPlace,toPlace,shapes}={}){
   const marker=(kind,node,extra={})=>{const point=position(node);allPoints.push(point);markers.push({id:'pin-'+markers.length,kind,node,point,...extra});};
   if(!quote.details.length){
     if(quote.routeMode!=='walking'||!fromPlace||!toPlace)throw Error('invalid-map-route');
-    addLine('walking',[fromPlace,toPlace],{role:'direct'});marker('origin',fromPlace);marker('destination',toPlace);
+    if(quote.walking){const route=validateWalkingRoute(quote.walking);addLine('walking',route.path.map(p=>({lat:p[0],lng:p[1]})),{role:'foot-route',color:'#187b58',weight:5,dashArray:null,nodes:[fromPlace,toPlace]});}
+    else coverage.push({legIndex:0,kind:'walking',service:{ko:'도보 보행길',en:'Pedestrian path'},available:0,total:1});
+    marker('origin',fromPlace);marker('destination',toPlace);
   }else{
     const first=quote.details[0].path?.[0],last=quote.details.at(-1).path?.at(-1);
     const access=quote.access||[],start=fromPlace&&access.some(a=>a.side==='from')?fromPlace:first,end=toPlace&&access.some(a=>a.side==='to')?toPlace:last;

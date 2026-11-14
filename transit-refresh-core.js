@@ -1,17 +1,16 @@
-import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-17';
-import {recommendAutoRoutes,autoOptions,autoTimingSnapshot,autoSummary,validateAutoPlan,quoteAutoRoute} from './auto-core.js?v=web-17';
-import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan} from './mixed-core.js?v=web-17';
-import {validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-17';
-import {validateMetroPlan,metroSummary} from './metro-core.js?v=web-17';
-import {estimateMetroTime,timingSnapshot,groundMeters} from './metro-time.js?v=web-17';
-export const hasSelectedTransit=(parsed,from,to)=>!!parsed.plan&&parsed.plan.from===from.id&&parsed.plan.to===to.id&&!(parsed.kind==='auto'&&parsed.plan.routeMode==='walking');
-export function calculateWalkingMovement(from,to){
-  const distance=groundMeters([from.place.latitude,from.place.longitude],[to.place.latitude,to.place.longitude]);
-  // The existing local walking model: straight distance × 1.25 at 75 m/min.
-  // This is an estimate, not a queried pedestrian route.
-  const meters=distance<5?0:Math.round(distance*1.25),seconds=distance<5?0:Math.round(distance),minutes=Math.ceil(seconds/60);
-  if(minutes>2880)throw Error('walk-too-long');
-  return {id:to.id,from:from.id,method:minutes===0?'same-place':'walking',minutes,meters,seconds,model:'distance-walk-v1',services:[],patch:{mode:'walking',travelMinutes:minutes,durationSource:'gateway',note:mergeTransitNote(to.note,null)}};
+import {validateWalkingRoute} from './walking-core.js?v=web-18';
+import {readTransitNote,mergeTransitNote} from './transit-note.js?v=web-18';
+import {recommendAutoRoutes,autoOptions,autoTimingSnapshot,autoSummary,validateAutoPlan,quoteAutoRoute} from './auto-core.js?v=web-18';
+import {estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan} from './mixed-core.js?v=web-18';
+import {validateBusPlan,estimateBusTime,busSummary} from './bus-core.js?v=web-18';
+import {validateMetroPlan,metroSummary} from './metro-core.js?v=web-18';
+import {estimateMetroTime,timingSnapshot,groundMeters} from './metro-time.js?v=web-18';
+export const hasSelectedTransit=(parsed,from,to)=>!!parsed.plan&&parsed.kind!=='walking'&&parsed.plan.from===from.id&&parsed.plan.to===to.id&&!(parsed.kind==='auto'&&parsed.plan.routeMode==='walking');
+export function calculateWalkingMovement(from,to,value){
+  const route=validateWalkingRoute(value);if(groundMeters(route.from,[from.place.latitude,from.place.longitude])>1||groundMeters(route.to,[to.place.latitude,to.place.longitude])>1||!route.id)throw Error('walking-endpoints');
+  const {path,minutes,...snapshot}=route,plan={v:1,from:from.id,to:to.id,route:snapshot,timing:{v:1,mode:'auto',minutes}},summary=`실제 보행 경로 / Walking route · ${Math.round(route.meters)}m\n⏱ 자동 예상 ${minutes}분 / Auto estimate ${minutes} min`;
+  let note;try{note=mergeTransitNote(to.note,plan,summary,'walking');}catch(e){if(e.message!=='note-too-long')throw e;delete plan.route.shape;note=mergeTransitNote(to.note,plan,summary,'walking');}
+  return {id:to.id,from:from.id,method:'walking',kind:'walking',minutes,meters:route.meters,seconds:route.seconds,route,services:[],patch:{mode:'walking',travelMinutes:minutes,durationSource:'gateway',note}};
 }
 export function compareMovementTimes(transit,walking){
   if(!transit||transit.error||!walking||walking.error)return null;

@@ -1,4 +1,4 @@
-import {locationMessage} from './current-location.js?v=web-17';
+import {locationMessage} from './current-location.js?v=web-18';
 export function createLocationOverlay({element,map,L,service,t,onFrom}){
   if(!service)return {destroy(){}};
   const pane=map.getPane?.('tripflow-current-location')||map.createPane?.('tripflow-current-location');if(pane)pane.style.zIndex='675';

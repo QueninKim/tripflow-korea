@@ -59,5 +59,20 @@
       "sha256": "600a10dc5cd110de0699510d322afcbe01c7ca90b4c5f48adc20314c70aac753",
       "bytes": 225544
     }
-  ]
+  ],
+  "pedestrianRouting": {
+    "provider": "FOSSGIS OSRM foot",
+    "endpoint": "https://routing.openstreetmap.de/routed-foot/route/v1/foot/",
+    "aboutAndUsagePolicy": "https://routing.openstreetmap.de/about.html",
+    "apiDocs": "https://project-osrm.org/docs/v5.24.0/api/#route-service",
+    "snapRadiusMeters": 80,
+    "minimumRequestIntervalMs": 1100,
+    "credentials": "omit",
+    "geometry": "full polyline6",
+    "attribution": "OpenStreetMap contributors; FOSSGIS; map-fix link",
+    "backgroundRequests": false,
+    "straightDistanceFallback": false,
+    "automaticRetries": false,
+    "maxEndpointDistanceMeters": 50000
+  }
 }

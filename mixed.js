@@ -1,17 +1,17 @@
-import {validateAutoPlan} from './auto-core.js?v=web-17';
-import {mixedData,busRegionID,metroRegionID,describeMixedLeg,mixedLegsFromSteps,mixedStepsFromLegs,normalizeMixedLegs,estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan,nearestMixedNodes} from './mixed-core.js?v=web-17';
-import {validateBusPlan} from './bus-core.js?v=web-17';
-import {validateMetroPlan} from './metro-core.js?v=web-17';
-import {readTransitNote,isAutoTransitTime} from './transit-note.js?v=web-17';
-import {createJourneyMap,journeyMapLegend,journeyMapNote} from './journey-map.js?v=web-17';
-import {projectedArrivals} from './metro-time.js?v=web-17';
-import {clock} from './core.js?v=web-17';
+import {validateAutoPlan} from './auto-core.js?v=web-18';
+import {mixedData,busRegionID,metroRegionID,describeMixedLeg,mixedLegsFromSteps,mixedStepsFromLegs,normalizeMixedLegs,estimateMixedTime,mixedTimingSnapshot,mixedSummary,validateMixedPlan,nearestMixedNodes} from './mixed-core.js?v=web-18';
+import {validateBusPlan} from './bus-core.js?v=web-18';
+import {validateMetroPlan} from './metro-core.js?v=web-18';
+import {readTransitNote,isAutoTransitTime} from './transit-note.js?v=web-18';
+import {createJourneyMap,journeyMapLegend,journeyMapNote} from './journey-map.js?v=web-18';
+import {projectedArrivals} from './metro-time.js?v=web-18';
+import {clock} from './core.js?v=web-18';
 export function createMixedPlanner(ctx){
   const {t,h,modal,modalTop,openModal,toast}=ctx,buses=new Map();let common,commonRequest,index,data,draft,map,loading=false;
   const label=s=>t(s.en||s.ko,s.ko),movement=()=>{const day=ctx.getDay(),i=day?.stops.findIndex(s=>s.id===draft.target);return {day,i,fromPlace:i>0?day.stops[i-1].place:undefined,toPlace:i>0?day.stops[i].place:undefined};};
   async function load(region){
-    if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json','bus-index.json'].map(file=>fetch('./'+file+'?v=web-17').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});
-    common=await commonRequest;index=common[2];const id=busRegionID(region);if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-17');if(!r.ok)throw Error('data');buses.set(id,await r.json());}data=mixedData(common[0],common[1],buses.get(id));
+    if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json','bus-index.json'].map(file=>fetch('./'+file+'?v=web-18').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});
+    common=await commonRequest;index=common[2];const id=busRegionID(region);if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-18');if(!r.ok)throw Error('data');buses.set(id,await r.json());}data=mixedData(common[0],common[1],buses.get(id));
   }
   function build(){
     if(!draft.steps.length)return {};
@@ -64,7 +64,7 @@ export function createMixedPlanner(ctx){
   async function open(target){
     if(loading)return;loading=true;
     try{const day=ctx.getDay(),selected=day?.stops.find(s=>s.id===target)||day?.stops[1],parsed=readTransitNote(selected?.note),city=ctx.getCity();let region=parsed.plan?.region||(/부산|busan|김해|gimhae/i.test(city)?'busan':/대구|daegu|경산/i.test(city)?'daegu':/대전|daejeon|세종/i.test(city)?'daejeon':/광주|gwangju/i.test(city)?'gwangju':'capital');await load(region);let steps=[];
-      try{if(parsed.kind==='mixed'||parsed.kind==='auto'){if(parsed.kind==='auto')validateAutoPlan(data,parsed.plan);else validateMixedPlan(data,parsed.plan);steps=mixedStepsFromLegs(data,parsed.plan.legs);}else if(parsed.plan){if(parsed.kind==='bus')validateBusPlan(data.bus,parsed.plan);else validateMetroPlan(data.network,parsed.plan);steps=[{kind:parsed.kind,plan:structuredClone(parsed.plan)}];for(const l of mixedLegsFromSteps(steps))describeMixedLeg(data,l);}}catch{steps=[];toast(t('The saved route needs review against the current data. Choose its sections again.','현재 자료로 기존 경로를 다시 확인해야 합니다. 구간을 다시 선택해주세요.'));}
+      try{if(parsed.kind==='mixed'||parsed.kind==='auto'){if(parsed.kind==='auto')validateAutoPlan(data,parsed.plan);else validateMixedPlan(data,parsed.plan);steps=mixedStepsFromLegs(data,parsed.plan.legs);}else if(parsed.plan&&parsed.kind!=='walking'){if(parsed.kind==='bus')validateBusPlan(data.bus,parsed.plan);else validateMetroPlan(data.network,parsed.plan);steps=[{kind:parsed.kind,plan:structuredClone(parsed.plan)}];for(const l of mixedLegsFromSteps(steps))describeMixedLeg(data,l);}}catch{steps=[];toast(t('The saved route needs review against the current data. Choose its sections again.','현재 자료로 기존 경로를 다시 확인해야 합니다. 구간을 다시 선택해주세요.'));}
       draft={steps,target:selected?.id||'',existing:parsed.kind==='mixed',tripID:ctx.getTripID(),dayID:day?.id,timeMode:parsed.kind==='mixed'&&!isAutoTransitTime(selected)?'manual':'auto',manualMinutes:parsed.kind==='mixed'?String(selected?.travelMinutes??''):'',options:{busWait:7,railWait:4,railTransferWait:3,railTransferWalk:5,maxTransferMeters:1000,includeWalk:!!selected,...(['mixed','auto'].includes(parsed.kind)?parsed.plan.timing?.options:{})},error:''};draw({top:true});
       if(parsed.kind==='mixed'&&day?.stops[day.stops.indexOf(selected)-1]?.id!==parsed.plan.from)toast(t('Itinerary order changed. Review the journey before saving.','일정 순서가 바뀌었습니다. 경로를 확인한 뒤 다시 저장해주세요.'));
     }catch{toast(t('Could not load combined journeys. Check your connection and retry.','통합 경로 자료를 불러오지 못했습니다. 연결을 확인하고 다시 열어주세요.'));}finally{loading=false;}
