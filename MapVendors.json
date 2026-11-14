@@ -79,7 +79,7 @@
       "outdoor transfer",
       "egress"
     ],
-    "stationInteriors": "not mapped; separately estimated and labelled",
+    "stationInteriors": "Official Seoul Metro corridor distance/time matched to 136 records at 70 stations; 100 original interior guide images at 67 stations; unmatched transfers remain explicit estimates",
     "savedTransitSnapshots": {
       "key": "tripflow-transit-pedestrian-v1",
       "maxEntries": 50,
@@ -87,5 +87,22 @@
       "integrity": "SHA-256 vehicle/options/endpoint signature and exact route hashes"
     },
     "candidateRanking": "queried bounded candidates only"
+  },
+  "indoorTransfers": {
+    "provider": "Seoul Metro / Seoul Open Data Plaza",
+    "dataVersion": "seoulmetro-transfer-20250331",
+    "distancesAndTimes": "https://data.seoul.go.kr/dataList/OA-13290/S/1/datasetView.do",
+    "stationGuideImages": "https://data.seoul.go.kr/dataList/OA-11984/S/1/datasetView.do",
+    "timeDate": "2025-03-31",
+    "guideImageDate": "2024-03-31",
+    "license": "Korea Open Government License Type 1",
+    "timeRows": 136,
+    "timeStations": 70,
+    "guideImages": 100,
+    "guideStations": 67,
+    "display": "Original schematic interior diagrams in Leaflet CRS.Simple; not GPS geometry",
+    "backgroundRequests": false,
+    "inventedCorridors": false,
+    "snapshotVersion": 2
   }
 }

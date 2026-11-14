@@ -1,16 +1,18 @@
-import {createLocationOverlay} from './location-overlay.js?v=web-19';
-import {journeyGeometry,journeyStyles} from './journey-geometry.js?v=web-19';
-import {loadJourneyShapes} from './journey-shapes.js?v=web-19';
+import {createIndoorPanel} from './indoor-map.js?v=web-20';
+import {indoorTime} from './indoor-core.js?v=web-20';
+import {createLocationOverlay} from './location-overlay.js?v=web-20';
+import {journeyGeometry,journeyStyles} from './journey-geometry.js?v=web-20';
+import {loadJourneyShapes} from './journey-shapes.js?v=web-20';
 export function journeyMapLegend(t){return `<div class="journey-map-legend" aria-label="${t('Route map legend','경로 지도 범례')}"><span><i class="journey-key-bus"></i>${t('Bus','버스')}</span><span><i class="journey-key-subway"></i>${t('Subway','지하철')}</span><span><i class="journey-key-walking"></i>${t('Walk','도보')}</span><small>${t('Numbers show boarding order','숫자는 탑승 순서')}</small></div>`;}
-export function journeyMapNote(t){return t('Bus lines follow official road geometry; subway lines follow mapped tracks. Missing source sections are left blank. Green walking lines follow queried outdoor footpaths. Station-interior paths are not mapped; their time is estimated separately.','버스는 공식 운행 도로, 지하철은 지도에 기록된 선로를 따라 표시합니다. 자료가 없는 구간은 비워 둡니다. 초록색 도보선은 조회된 실외 보행길입니다. 역 내부 통로는 그리지 않으며 역내 이동시간은 별도 예상입니다. 보행길은 가까운 연결 지점 기준이며 출입구·임시통제는 다를 수 있습니다.')+` <a href="./route-shape-sources.html" target="_blank" rel="noopener">${t('Sources & coverage','출처·표시 범위')} ↗</a>`;}
+export function journeyMapNote(t){return t('Bus lines follow official road geometry; subway lines follow mapped tracks. Missing source sections are left blank. Green walking lines follow queried outdoor footpaths. Tap an internal-transfer marker to open the official station interior diagram. Official corridor distance/time is used where matched; other internal walks remain estimates.','버스는 공식 운행 도로, 지하철은 지도에 기록된 선로를 따라 표시합니다. 자료가 없는 구간은 비워 둡니다. 초록색 도보선은 조회된 실외 보행길입니다. 역내 환승 표지를 누르면 공식 역 내부 안내도를 볼 수 있습니다. 일치하는 공식 환승 거리·시간을 반영하며, 자료가 없는 역내 이동은 예상입니다. 보행길은 가까운 연결 지점 기준이며 출입구·임시통제는 다를 수 있습니다.')+` <a href="./route-shape-sources.html" target="_blank" rel="noopener">${t('Sources & coverage','출처·표시 범위')} ↗</a>`;}
 export function createJourneyMap(options){
-  let inner,disposed=false;const {element,t}=options;if(!options.quote.details.length)options={...options,shapes:{bus:{},subway:{}}};
-  const render=(shapes,state)=>{if(disposed)return;const camera=inner?.getCamera()||options.camera;inner?.destroy();inner=renderJourneyMap({...options,shapes,camera:camera?.type==='geographic'?camera:options.camera,shapeState:state});};
+  let inner,disposed=false;const {element,t}=options;const indoor=createIndoorPanel(options);if(!options.quote.details.length)options={...options,shapes:{bus:{},subway:{}}};
+  const render=(shapes,state)=>{if(disposed)return;const camera=inner?.getCamera()||options.camera;inner?.destroy();inner=renderJourneyMap({...options,shapes,onIndoor:index=>indoor.open(index),camera:camera?.type==='geographic'?camera:options.camera,shapeState:state});};
   render(options.shapes,options.shapes?'loaded':'loading');
   const ready=options.shapes?Promise.resolve():((options.loadShapes||loadJourneyShapes)(options.region).then(shapes=>render(shapes,'loaded')).catch(()=>render(null,'error')));
-  return {ready,zoom:factor=>inner?.zoom(factor),fit:()=>inner?.fit(),focusLeg:i=>inner?.focusLeg(i),getCamera:()=>inner?.getCamera(),destroy:()=>{disposed=true;inner?.destroy();}};
+  return {ready,zoom:factor=>inner?.zoom(factor),fit:()=>inner?.fit(),focusLeg:i=>inner?.focusLeg(i),getCamera:()=>inner?.getCamera(),destroy:()=>{disposed=true;inner?.destroy();indoor.destroy();}};
 }
-function renderJourneyMap({element,quote,fromPlace,toPlace,t,placeName,camera,onStation=()=>{},library=window.L,shapes,shapeState,location,onFromCurrent}){
+function renderJourneyMap({element,quote,fromPlace,toPlace,t,placeName,camera,onStation=()=>{},library=window.L,shapes,shapeState,location,onFromCurrent,onIndoor=()=>{}}){
   const geometry=journeyGeometry(quote,{fromPlace,toPlace,shapes}),name=p=>p.name?placeName(p):t(p.en||p.ko,p.ko),kindName=k=>k==='bus'?t('Bus','버스'):k==='subway'?t('Subway','지하철'):t('Walk','도보');
   const status=document.createElement('div');status.className='journey-map-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   element.classList.add('journey-map');element.setAttribute('role','region');element.setAttribute('aria-label',t('Selected journey on the street map','실제 지도 위 선택한 이동경로'));
@@ -56,6 +58,7 @@ function renderJourneyMap({element,quote,fromPlace,toPlace,t,placeName,camera,on
       const endpoint=pin.kind==='origin'||pin.kind==='destination',board=pin.kind==='board',transfer=pin.kind==='transfer-out',color=pin.kind==='origin'?'#216767':pin.kind==='destination'?'#d54b36':transfer?'#243c43':journeyStyles[pin.service.kind].color;
       const title=endpoint?(pin.kind==='origin'?t('Departure','출발지'):t('Destination','도착지'))+' · '+name(pin.node):board?`${pin.legIndex+1}. ${kindName(pin.service.kind)} · ${t(pin.service.en,pin.service.ko)}`:transfer?t('Transfer','환승')+' '+pin.transfer:t('Alight','하차')+' · '+name(pin.node);
       const subtitle=pin.node.code?'#'+pin.node.code+' · '+name(pin.node):name(pin.node),content=popup(title,transfer?name(pin.node)+' → '+name(pin.next):subtitle);
+      if(transfer&&pin.indoor){const time=document.createElement('p');time.textContent=pin.indoor.meters+'m · '+indoorTime(pin.indoor.seconds,t);content.append(time);const button=document.createElement('button');button.type='button';button.textContent=t('Inside station map','역 내부 지도 보기');button.addEventListener('click',()=>onIndoor(pin.transfer-1));content.append(button);}
       if(endpoint||board||transfer){
         const symbol=pin.kind==='origin'?t('S','출'):pin.kind==='destination'?t('E','도'):transfer?'↔':String(pin.legIndex+1),size=endpoint?32:board?26:22;
         L.marker(pin.point,{title,alt:title,keyboard:true,zIndexOffset:endpoint?1200:board?800:400,icon:L.divIcon({className:'journey-pin',html:`<span style="--pin-color:${color};--pin-size:${size}px">${symbol}</span>`,iconSize:[size,size],iconAnchor:[size/2,size/2]})}).addTo(real).bindPopup(content).on('click',()=>onStation(pin.node));

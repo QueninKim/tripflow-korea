@@ -1,20 +1,20 @@
-import {transitWalking,loadTransitWalkingData,quoteTransitPlan,actualTransitTiming,transitPlanSummary} from './transit-walking.js?v=web-19';
-import {createWalkingViewer} from './walking-view.js?v=web-19';
-import {createTransitRefresher} from './transit-refresh.js?v=web-19';
-import {applyTransitResults,calculateWalkingMovement} from './transit-refresh-core.js?v=web-19';
-import {createLocationService} from './current-location.js?v=web-19';
-import {createPlaceMapViewer} from './place-map.js?v=web-19';
-import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState,budgetCurrencies,budgetAmount,convertedBudget,budgetTotal,convertedExpense,expenseRateKey,expenseRateEntries} from './core.js?v=web-19';
+import {transitWalking,loadTransitWalkingData,quoteTransitPlan,actualTransitTiming,transitPlanSummary} from './transit-walking.js?v=web-20';
+import {createWalkingViewer} from './walking-view.js?v=web-20';
+import {createTransitRefresher} from './transit-refresh.js?v=web-20';
+import {applyTransitResults,calculateWalkingMovement} from './transit-refresh-core.js?v=web-20';
+import {createLocationService} from './current-location.js?v=web-20';
+import {createPlaceMapViewer} from './place-map.js?v=web-20';
+import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState,budgetCurrencies,budgetAmount,convertedBudget,budgetTotal,convertedExpense,expenseRateKey,expenseRateEntries} from './core.js?v=web-20';
 
-import {createMetroPlanner} from './metro.js?v=web-19';
-import {createJourneyViewer} from './journey-view.js?v=web-19';
-import {createAutoPlanner} from './auto.js?v=web-19';
-import {autoSummary,sameAutoPlace} from './auto-core.js?v=web-19';
-import {createMixedPlanner} from './mixed.js?v=web-19';
-import {createBusPlanner} from './bus.js?v=web-19';
-import {readTransitNote,mergeTransitNote,transitStatus,isAutoTransitTime,setTransitManualTime} from './transit-note.js?v=web-19';
+import {createMetroPlanner} from './metro.js?v=web-20';
+import {createJourneyViewer} from './journey-view.js?v=web-20';
+import {createAutoPlanner} from './auto.js?v=web-20';
+import {autoSummary,sameAutoPlace} from './auto-core.js?v=web-20';
+import {createMixedPlanner} from './mixed.js?v=web-20';
+import {createBusPlanner} from './bus.js?v=web-20';
+import {readTransitNote,mergeTransitNote,transitStatus,isAutoTransitTime,setTransitManualTime} from './transit-note.js?v=web-20';
 
-const VERSION='web-19';
+const VERSION='web-20';
 const native=!!window.webkit?.messageHandlers?.tripflow;
 const bridge=(command,payload={})=>window.webkit.messageHandlers.tripflow.postMessage({command,...payload});
 let nativeFeatures={};

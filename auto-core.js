@@ -1,7 +1,8 @@
-import {metroGraph,metroPaths,metroTimingText} from './metro-core.js?v=web-19';
-import {groundMeters,modelRunSeconds} from './metro-time.js?v=web-19';
-import {rideSeconds} from './bus-core.js?v=web-19';
-import {mixedOptions,describeMixedLeg} from './mixed-core.js?v=web-19';
+import {indoorTransfer,indoorNeighbours} from './indoor-core.js?v=web-20';
+import {metroGraph,metroPaths,metroTimingText} from './metro-core.js?v=web-20';
+import {groundMeters,modelRunSeconds} from './metro-time.js?v=web-20';
+import {rideSeconds} from './bus-core.js?v=web-20';
+import {mixedOptions,describeMixedLeg} from './mixed-core.js?v=web-20';
 const position=p=>Array.isArray(p)?p:[p?.latitude,p?.longitude];
 const integer=(v,f,min,max)=>{if(v===undefined)return f;if(!['number','string'].includes(typeof v)||(typeof v==='string'&&!v.trim())||!Number.isInteger(Number(v))||Number(v)<min||Number(v)>max)throw Error('invalid-search-options');return Number(v);};
 export function autoOptions(raw={}){
@@ -17,13 +18,13 @@ function railEdge(data,line,a,b){
 export const limitedBusService=no=>/^N\d|심야|새벽|출근|퇴근/i.test(no);
 function describe(data,leg){return describeMixedLeg(data,leg);}
 const point=s=>[s.lat,s.lng];
-function connector(a,b,options,entry,exit){
-  const from=a.path.at(-1),to=b.path[0],meters=Math.round(groundMeters(point(from),point(to))),internal=a.kind==='subway'&&b.kind==='subway'&&from.id===to.id;
+function connector(a,b,options,entry,exit,region){
+  const from=a.path.at(-1),to=b.path[0],meters=Math.round(groundMeters(point(from),point(to))),indoor=a.kind==='subway'&&b.kind==='subway'?indoorTransfer(region,from.sourceID,a.id,b.id,to.sourceID):null,internal=a.kind==='subway'&&b.kind==='subway'&&(from.id===to.id||!!indoor);
   if(a.kind==='subway'&&b.kind==='subway'&&a.id===b.id&&from.id===to.id)throw Error('invalid-continuation');
   const limit=a.kind==='bus'&&b.kind==='bus'?Math.min(180,options.transferRadius):options.transferRadius;
   if(!internal&&meters>limit)throw Error('transfer-too-far');
-  const walk=internal?options.railTransferWalk*60:meters+(a.kind==='subway'?exit:0)+(b.kind==='subway'?entry:60);
-  return {from,to,meters,internal,seconds:walk,waitSeconds:(b.kind==='bus'?options.busWait:internal?options.railTransferWait:options.railWait)*60};
+  const walk=internal?(indoor?.seconds??options.railTransferWalk*60):meters+(a.kind==='subway'?exit:0)+(b.kind==='subway'?entry:60);
+  return {from,to,meters:indoor?.meters??meters,internal,...(indoor?{indoor}:{}),seconds:walk,waitSeconds:(b.kind==='bus'?options.busWait:internal?options.railTransferWait:options.railWait)*60};
 }
 function allocate(seconds){const parts=Object.fromEntries(Object.entries(seconds).map(([k,v])=>[k,Math.floor(v/60)])),totalSeconds=Object.values(seconds).reduce((a,b)=>a+b,0),minutes=Math.ceil(totalSeconds/60);let n=minutes-Object.values(parts).reduce((a,b)=>a+b,0);for(const k of Object.keys(parts).sort((a,b)=>seconds[b]%60-seconds[a]%60)){if(!n--)break;parts[k]++;}return {parts,totalSeconds,minutes};}
 export function quoteAutoRoute(data,legs,{fromPlace,toPlace,options={}}={}){
@@ -34,7 +35,7 @@ export function quoteAutoRoute(data,legs,{fromPlace,toPlace,options={}}={}){
   for(const [i,d]of details.entries()){
     if(d.kind==='bus'){if(!opts.includeLimitedServices&&limitedBusService(d.no))throw Error('limited-service');let ride=0;for(let j=1;j<d.path.length;j++)ride+=Math.round(rideSeconds(d.path[j-1],d.path[j]));d.rideSeconds=ride;seconds.bus+=ride;}
     else{const line=data.region.lines.find(l=>l.id===d.id);let ride=0,allModeled=true;for(let j=1;j<d.path.length;j++){const e=railEdge(data,line,d.path[j-1].sourceID,d.path[j].sourceID);ride+=e.seconds+(j>1&&(e.modeled||allModeled)?data.times.profiles[data.times.regions[data.region.id].lines[d.id].profile].dwellSeconds:0);allModeled&&=e.modeled;}d.rideSeconds=ride;seconds.rail+=ride;}
-    if(i){const c=connector(details[i-1],d,opts,entry,exit);connections.push(c);seconds.walk+=c.seconds;seconds.wait+=c.waitSeconds;}
+    if(i){const c=connector(details[i-1],d,opts,entry,exit,data.region.id);connections.push(c);seconds.walk+=c.seconds;seconds.wait+=c.waitSeconds;}
     else {seconds.wait+=(d.kind==='bus'?opts.busWait:opts.railWait)*60;if(d.kind==='subway')seconds.walk+=entry;}
   }
   if(details.at(-1).kind==='subway')seconds.walk+=exit;
@@ -44,11 +45,11 @@ export function quoteAutoRoute(data,legs,{fromPlace,toPlace,options={}}={}){
 export function autoTimingSnapshot(q){return {v:1,mode:'auto',minutes:q.minutes,seconds:q.seconds,options:q.options,model:q.model,...(q.pedestrian?{pedestrian:{v:1,id:q.pedestrian.id,seconds:q.seconds.walk}}:{})};}
 export function validateAutoPlan(data,plan){
   if(plan.v!==1||plan.region!==data.region.id||plan.b!==data.bus.version||plan.m!==data.network.checkedAt||!['transit','walking'].includes(plan.routeMode)||!Array.isArray(plan.legs)||plan.legs.length>6||(plan.routeMode==='walking')!==(plan.legs.length===0))throw Error('invalid-route');
-  const opts=autoOptions(plan.timing?.options);if(plan.legs.length>opts.maxTransfers+1)throw Error('invalid-route');const details=plan.legs.map(l=>describe(data,l));for(let i=1;i<details.length;i++)connector(details[i-1],details[i],opts,data.times.walking.entryMinutes*60,data.times.walking.exitMinutes*60);return details;
+  const opts=autoOptions(plan.timing?.options);if(plan.legs.length>opts.maxTransfers+1)throw Error('invalid-route');const details=plan.legs.map(l=>describe(data,l));for(let i=1;i<details.length;i++)connector(details[i-1],details[i],opts,data.times.walking.entryMinutes*60,data.times.walking.exitMinutes*60,data.region.id);return details;
 }
 export function autoSummary(data,plan){
   const details=validateAutoPlan(data,plan),label=s=>s.ko+(s.id.startsWith('b:')&&s.code?' #'+s.code:'');
-  return [`자동 추천 / Suggested route · ${plan.routeMode==='walking'?'도보 / Walk':data.region.ko}`,...details.flatMap((d,i)=>[...(i?[connector(details[i-1],d,autoOptions(plan.timing?.options),0,0).internal?'역내 환승 / In-station transfer':`도보 환승 / Walk transfer ${Math.round(groundMeters(point(details[i-1].path.at(-1)),point(d.path[0])))}m`]:[]),`${d.kind==='bus'?'Bus '+d.no:d.ko+' / '+d.en}: ${label(d.path[0])} → ${label(d.path.at(-1))} (${label(d.path[1])} 방면 / next; ${d.path.length-1} stops)`]),metroTimingText(plan.timing)].filter(Boolean).join('\n');
+  return [`자동 추천 / Suggested route · ${plan.routeMode==='walking'?'도보 / Walk':data.region.ko}`,...details.flatMap((d,i)=>[...(i?[connector(details[i-1],d,autoOptions(plan.timing?.options),0,0,data.region.id).internal?'역내 환승 / In-station transfer':`도보 환승 / Walk transfer ${Math.round(groundMeters(point(details[i-1].path.at(-1)),point(d.path[0])))}m`]:[]),`${d.kind==='bus'?'Bus '+d.no:d.ko+' / '+d.en}: ${label(d.path[0])} → ${label(d.path.at(-1))} (${label(d.path[1])} 방면 / next; ${d.path.length-1} stops)`]),metroTimingText(plan.timing)].filter(Boolean).join('\n');
 }
 class Heap{
   a=[];push(s){const a=this.a;a.push(s);let i=a.length-1;while(i){const p=(i-1)>>1;if(a[p].cost<s.cost||a[p].cost===s.cost&&a[p].rides<=s.rides)break;a[i]=a[p];i=p;}a[i]=s;}
@@ -82,14 +83,14 @@ export function searchAutoTransit(data,{fromPlace,toPlace,options={},firstKind=n
       const previous=cur.last<0?null:g.services[cur.last],at=g.nodes[cur.node];
       if(cur.rides&&ends.has(cur.node)){const cost=cur.cost+ends.get(cur.node)+(previous.kind==='subway'?exit:0);if(!winner||cost<winner.cost||cost===winner.cost&&cur.rides<winner.state.rides)winner={state:cur,cost};}
       if(cur.rides>=maxRides)continue;
-      const nk=cur.node+':'+opts.transferRadius;if(!nearCache.has(nk))nearCache.set(nk,g.nearby(cur.node,opts.transferRadius));const choices=previous?nearCache.get(nk):[{node:cur.node,meters:0}];
+      const nk=cur.node+':'+opts.transferRadius;if(!nearCache.has(nk))nearCache.set(nk,g.nearby(cur.node,opts.transferRadius));const choices=previous?[...nearCache.get(nk)]:[{node:cur.node,meters:0}];if(previous?.kind==='subway')for(const sid of indoorNeighbours(data.region.id,at.sourceID)){const node=g.byID.get('s:'+sid);if(node!==undefined&&!choices.some(c=>c.node===node))choices.push({node,meters:0});}
       for(const c of choices){const nextNode=g.nodes[c.node];if(previous?.kind==='bus'&&nextNode.kind==='bus'&&c.meters>Math.min(180,opts.transferRadius))continue;
         for(const [service,pos]of g.members[c.node]){const next=g.services[service];if(next.limited&&!opts.includeLimitedServices||!next.edges[pos].length)continue;if(!previous&&((firstKind&&next.kind!==firstKind)||banned.has(next.kind+':'+next.id)))continue;
-          const internal=previous?.kind==='subway'&&next.kind==='subway'&&cur.node===c.node;
+          const indoor=previous?.kind==='subway'&&next.kind==='subway'?indoorTransfer(data.region.id,at.sourceID,previous.id,next.id,nextNode.sourceID):null,internal=previous?.kind==='subway'&&next.kind==='subway'&&(cur.node===c.node||!!indoor);
           if(internal&&cur.last===service)continue;
           let cost=cur.cost+(next.kind==='bus'?opts.busWait:internal?opts.railTransferWait:opts.railWait)*60;
           if(!previous){if(next.kind==='subway')cost+=entry;}
-          else if(internal)cost+=opts.railTransferWalk*60;
+          else if(internal)cost+=indoor?.seconds??opts.railTransferWalk*60;
           else cost+=c.meters+(previous.kind==='subway'?exit:0)+(next.kind==='subway'?entry:60);
           put({type:'on',service,pos,node:c.node,rides:cur.rides+1,started:false,allModeled:true,cost,parent:cur,action:'board'});
         }

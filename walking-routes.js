@@ -1,5 +1,5 @@
-import {groundMeters} from './metro-time.js?v=web-19';
-import {encodeWalkingShape,walkingPosition,parseWalkingResponse,validateWalkingRoute,walkingRouteID} from './walking-core.js?v=web-19';
+import {groundMeters} from './metro-time.js?v=web-20';
+import {encodeWalkingShape,walkingPosition,parseWalkingResponse,validateWalkingRoute,walkingRouteID} from './walking-core.js?v=web-20';
 const ENDPOINT='https://routing.openstreetmap.de/routed-foot/route/v1/foot/',CACHE='tripflow-walking-roads-v1';
 const abort=()=>Error('cancelled');
 function pause(ms,signal){return new Promise((resolve,reject)=>{if(signal?.aborted)return reject(abort());const cancel=()=>{clearTimeout(timer);reject(abort());},timer=setTimeout(()=>{signal?.removeEventListener('abort',cancel);resolve();},ms);signal?.addEventListener('abort',cancel,{once:true});});}

@@ -1,5 +1,6 @@
-import {metroPaths,validateMetroPlan} from './metro-core.js?v=web-19';
-import {arrivals} from './core.js?v=web-19';
+import {indoorTransfer} from './indoor-core.js?v=web-20';
+import {metroPaths,validateMetroPlan} from './metro-core.js?v=web-20';
+import {arrivals} from './core.js?v=web-20';
 export function groundMeters(a,b){
   if(!a||!b||![...a,...b].every(Number.isFinite)||Math.abs(a[0])>90||Math.abs(b[0])>90||Math.abs(a[1])>180||Math.abs(b[1])>180)throw Error('invalid-position');
   const rad=Math.PI/180,p=(b[0]-a[0])*rad,q=(b[1]-a[1])*rad;
@@ -51,11 +52,12 @@ export function estimateMetroTime(network,settings,regionID,legs,{fromPlace,toPl
       accessMeters+=meters;walkS+=meters*settings.walking.distanceFactor/settings.walking.metersPerMinute*60;
     }
   }
-  const waitS=opts.waitMinutes*60,transferS=(legs.length-1)*(opts.transferWalkMinutes+opts.transferWaitMinutes)*60;
+  const indoorTransfers=legs.slice(1).map((leg,i)=>indoorTransfer(regionID,legs[i][2],legs[i][0],leg[0],leg[1]));
+  const waitS=opts.waitMinutes*60,transferS=indoorTransfers.reduce((sum,indoor)=>sum+(indoor?.seconds??opts.transferWalkMinutes*60)+opts.transferWaitMinutes*60,0);
   const seconds={ride:Math.round(rideS),wait:waitS,transfer:transferS,walk:Math.round(walkS)};
   const parts=allocateMinutes(seconds),minutes=Object.values(parts).reduce((a,b)=>a+b,0);
   if(!Number.isSafeInteger(minutes)||minutes<1||minutes>2880)throw Error('time-limit');
-  return {v:1,mode:'auto',minutes,seconds,parts,operatorEdges,modelEdges,perLeg,options:opts,modelVersion:settings.modelVersion,accessIncluded:opts.includeWalk&&!!fromPlace&&!!toPlace,accessMeters:Math.round(accessMeters)};
+  return {v:1,mode:'auto',minutes,seconds,parts,indoorTransfers,operatorEdges,modelEdges,perLeg,options:opts,modelVersion:settings.modelVersion,accessIncluded:opts.includeWalk&&!!fromPlace&&!!toPlace,accessMeters:Math.round(accessMeters)};
 }
 export function timingSnapshot(quote){
   return {v:1,mode:'auto',minutes:quote.minutes,seconds:quote.seconds,operatorEdges:quote.operatorEdges,modelEdges:quote.modelEdges,options:quote.options,modelVersion:quote.modelVersion,accessIncluded:quote.accessIncluded};

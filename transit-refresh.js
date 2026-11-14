@@ -1,10 +1,10 @@
-import {enrichTransitResult} from './transit-walking.js?v=web-19';
-import {walkingRoutes} from './walking-routes.js?v=web-19';
-import {readTransitNote} from './transit-note.js?v=web-19';
-import {hasSelectedTransit,calculateTransitMovement,calculateWalkingMovement,compareMovementTimes} from './transit-refresh-core.js?v=web-19';
-import {inferAutoRegion} from './auto-core.js?v=web-19';
-import {mixedData,busRegionID} from './mixed-core.js?v=web-19';
-import {groundMeters} from './metro-time.js?v=web-19';
+import {enrichTransitResult} from './transit-walking.js?v=web-20';
+import {walkingRoutes} from './walking-routes.js?v=web-20';
+import {readTransitNote} from './transit-note.js?v=web-20';
+import {hasSelectedTransit,calculateTransitMovement,calculateWalkingMovement,compareMovementTimes} from './transit-refresh-core.js?v=web-20';
+import {inferAutoRegion} from './auto-core.js?v=web-20';
+import {mixedData,busRegionID} from './mixed-core.js?v=web-20';
+import {groundMeters} from './metro-time.js?v=web-20';
 export function createTransitRefresher(ctx){
   const {t,h,modal,modalTop,openModal,toast}=ctx,buses=new Map();let commonRequest,job,sequence=0,worker,stopGroup,internal=false;
   const busy=()=>job&&['loading','calculating','saving'].includes(job.stage),current=active=>job===active&&active.token===sequence&&modal.open&&modal.classList.contains('transit-refresh-modal');
@@ -32,14 +32,14 @@ export function createTransitRefresher(ctx){
     }finally{internal=false;}
   }
   function cancel(){sequence++;job?.walkingAbort?.abort();stopGroup?.(Error('cancelled'));worker?.terminate();worker=null;if(job&&busy())job.stage='cancelled';}
-  async function loadCommon(){if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json'].map(file=>fetch('./'+file+'?v=web-19').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});return commonRequest;}
-  async function loadBus(id){if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-19');if(!r.ok)throw Error('data');buses.set(id,await r.json());}return buses.get(id);}
+  async function loadCommon(){if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json'].map(file=>fetch('./'+file+'?v=web-20').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});return commonRequest;}
+  async function loadBus(id){if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-20');if(!r.ok)throw Error('data');buses.set(id,await r.json());}return buses.get(id);}
   function receive(active,result){if(!current(active))return;active.results[result.index]=result;draw();}
   async function fallback(active,data,movements){
     for(const m of movements){await new Promise(r=>setTimeout(r,0));if(!current(active))return;let result;try{result={...calculateTransitMovement(data,m.from,m.to),index:m.index};}catch(e){result={id:m.to.id,from:m.from.id,index:m.index,error:e.message};}receive(active,result);}
   }
   function inWorker(active,network,times,bus,movements){
-    return new Promise((resolve,reject)=>{let timer,settled=false,local;try{local=new Worker(new URL('./transit-refresh-worker.js?v=web-19',import.meta.url),{type:'module'});}catch{reject(Error('worker-error'));return;}worker=local;
+    return new Promise((resolve,reject)=>{let timer,settled=false,local;try{local=new Worker(new URL('./transit-refresh-worker.js?v=web-20',import.meta.url),{type:'module'});}catch{reject(Error('worker-error'));return;}worker=local;
       const finish=error=>{if(settled)return;settled=true;clearTimeout(timer);local.terminate();if(worker===local)worker=null;stopGroup=null;error?reject(error):resolve();};stopGroup=finish;
       const deadline=()=>{clearTimeout(timer);timer=setTimeout(()=>finish(Error('timeout')),30000);};deadline();
       local.onmessage=e=>{const message=e.data;if(!current(active)||message.requestId!==active.token)return;if(message.type==='result'){deadline();receive(active,message.result);}else if(message.type==='done')finish();else if(message.type==='error')finish(Error(message.error));};local.onerror=()=>finish(Error('worker-error'));

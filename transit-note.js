@@ -1,8 +1,8 @@
-import {readWalkingNote,mergeWalkingNote} from './walking-note.js?v=web-19';
-import {readAutoNote,mergeAutoNote} from './auto-note.js?v=web-19';
-import {readMetroNote,mergeMetroNote,metroStatus,metroTimingText} from './metro-core.js?v=web-19';
-import {readMixedNote,mergeMixedNote} from './mixed-core.js?v=web-19';
-import {readBusNote,mergeBusNote} from './bus-core.js?v=web-19';
+import {readWalkingNote,mergeWalkingNote} from './walking-note.js?v=web-20';
+import {readAutoNote,mergeAutoNote} from './auto-note.js?v=web-20';
+import {readMetroNote,mergeMetroNote,metroStatus,metroTimingText} from './metro-core.js?v=web-20';
+import {readMixedNote,mergeMixedNote} from './mixed-core.js?v=web-20';
+import {readBusNote,mergeBusNote} from './bus-core.js?v=web-20';
 export function readTransitNote(note=''){
   const walk=readWalkingNote(note);if(walk.plan)return {...walk,kind:'walking'};
   const auto=readAutoNote(note);if(auto.plan)return {...auto,kind:'auto'};

@@ -1,5 +1,5 @@
-import {validateWalkingRoute} from './walking-core.js?v=web-19';
-import {rideShape} from './journey-shapes.js?v=web-19';
+import {validateWalkingRoute} from './walking-core.js?v=web-20';
+import {rideShape} from './journey-shapes.js?v=web-20';
 export const journeyStyles={
   bus:{color:'#2368dc',weight:6,dashArray:null},
   subway:{color:'#8c39c7',weight:7,dashArray:null},
@@ -38,7 +38,7 @@ export function journeyGeometry(quote,{fromPlace,toPlace,shapes}={}){
       if(i){
         const c=quote.connections?.[i-1];if(!c?.from||!c?.to)throw Error('invalid-map-route');
         if(!c.internal)foot('transfer-'+(i-1),c.from,c.to,{role:'transfer',transfer:i,internal:false});
-        marker('transfer-out',c.from,{transfer:i,next:c.to,service:d});
+        marker('transfer-out',c.from,{transfer:i,next:c.to,service:d,...(c.indoor?{indoor:c.indoor}:{})});
       }
       const shaped=rideShape(d,shapes);coverage.push({legIndex:i,kind:d.kind,service:d,available:shaped.available,total:shaped.total});
       const chunks=[];for(const path of shaped.segments){const prev=chunks.at(-1);if(prev&&same(prev.at(-1),path[0]))prev.push(...path.slice(1));else chunks.push([...path]);}

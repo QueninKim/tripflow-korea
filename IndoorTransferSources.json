@@ -1,0 +1,57 @@
+{
+  "v": 1,
+  "id": "seoulmetro-transfer-20250331",
+  "region": "capital",
+  "date": "2025-03-31",
+  "guideDate": "2024-03-31",
+  "source": "https://data.seoul.go.kr/dataList/OA-13290/S/1/datasetView.do",
+  "guideSource": "https://data.seoul.go.kr/dataList/OA-11984/S/1/datasetView.do",
+  "license": "KOGL Type 1 · 서울교통공사 · 출처표시",
+  "walkingMetersPerSecond": 1.2,
+  "rawRows": 140,
+  "matchedRows": 136,
+  "stations": 70,
+  "guideStations": 67,
+  "guideImages": 100,
+  "excludedAmbiguousOrSameLine": [
+    {
+      "연번": "23",
+      "호선": "2",
+      "환승역명": "성수",
+      "환승노선": "2호선",
+      "환승거리": "23",
+      "환승소요시간": "00:19"
+    },
+    {
+      "연번": "34",
+      "호선": "2",
+      "환승역명": "신도림",
+      "환승노선": "2호선",
+      "환승거리": "81",
+      "환승소요시간": "01:08"
+    },
+    {
+      "연번": "57",
+      "호선": "3",
+      "환승역명": "수서",
+      "환승노선": "국철",
+      "환승거리": "92",
+      "환승소요시간": "01:17"
+    },
+    {
+      "연번": "98",
+      "호선": "5",
+      "환승역명": "강동",
+      "환승노선": "5호선",
+      "환승거리": "19",
+      "환승소요시간": "00:16"
+    }
+  ],
+  "csvSha256": "3699fadb54cb42d7ce6fb17525d609d1f506e6c3ade3d10fa7806b001b80ec09",
+  "notes": [
+    "Times are published distance / 1.2 m/s estimates, not live measurements. Same corridor distance/time is usable in reverse only if the source has no separate reverse row.",
+    "Station maps are the official hosted 2024-03-31 image snapshot. The 2026-08 zip is available from the source page separately.",
+    "Original station guide diagrams show transfer corridors and levels. No pixel coordinates are treated as geographic coordinates, and no corridor shape or floor connection is invented.",
+    "Ambiguous Suseo 국철 row is excluded; same-line platform changes cannot be resolved by the current line/station model."
+  ]
+}

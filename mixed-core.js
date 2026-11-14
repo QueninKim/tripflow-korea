@@ -1,6 +1,7 @@
-import {validateMetroPlan,metroPaths,metroTimingText} from './metro-core.js?v=web-19';
-import {validateBusPlan,busGraph,rideSeconds} from './bus-core.js?v=web-19';
-import {groundMeters,estimateMetroTime} from './metro-time.js?v=web-19';
+import {indoorTransfer} from './indoor-core.js?v=web-20';
+import {validateMetroPlan,metroPaths,metroTimingText} from './metro-core.js?v=web-20';
+import {validateBusPlan,busGraph,rideSeconds} from './bus-core.js?v=web-20';
+import {groundMeters,estimateMetroTime} from './metro-time.js?v=web-20';
 const START='[TripFlow Mixed v1]',END='[/TripFlow Mixed]';
 export const metroRegionID=id=>id==='seoul'?'capital':id;
 export const busRegionID=id=>id==='capital'?'seoul':id;
@@ -57,10 +58,10 @@ export function validateMixedPlan(data,plan,{requireBoth=true}={}){
   const details=plan.legs.map(l=>describeMixedLeg(data,l)),options=mixedOptions(plan.timing?.options),connections=[];
   for(let i=1;i<details.length;i++){
     const a=details[i-1],b=details[i],from=a.path.at(-1),to=b.path[0],meters=groundMeters([from.lat,from.lng],[to.lat,to.lng]);
-    const internal=a.kind==='subway'&&b.kind==='subway'&&from.id===to.id;
+    const indoor=a.kind==='subway'&&b.kind==='subway'?indoorTransfer(data.region.id,from.sourceID,a.id,b.id,to.sourceID):null,internal=a.kind==='subway'&&b.kind==='subway'&&(from.id===to.id||!!indoor);
     if(a.kind==='subway'&&b.kind==='subway'&&a.id===b.id&&from.id===to.id)throw Error('invalid-continuation');
     if(!internal&&meters>options.maxTransferMeters){const e=Error('transfer-too-far');e.gap={index:i,meters:Math.round(meters),from,to};throw e;}
-    connections.push({index:i,from,to,meters:Math.round(meters),internal});
+    connections.push({index:i,from,to,meters:indoor?.meters??Math.round(meters),internal,...(indoor?{indoor}:{})});
   }
   return {details,connections,options};
 }
@@ -68,10 +69,10 @@ const allocate=seconds=>{const names=Object.keys(seconds),parts=Object.fromEntri
 export function estimateMixedTime(data,legs,{options={},fromPlace,toPlace}={}){
   const opts=mixedOptions(options),plan={region:data.region.id,b:data.bus.version,m:data.network.checkedAt,legs,timing:{options:opts}},validated=validateMixedPlan(data,plan,{requireBoth:false}),{details,connections}=validated,seconds={bus:0,rail:0,wait:0,walk:0},access=[];
   details.forEach((d,i)=>{
-    const prev=details[i-1],next=details[i+1],insideBefore=prev?.kind==='subway'&&d.kind==='subway'&&prev.path.at(-1).id===d.path[0].id,insideAfter=next?.kind==='subway'&&d.kind==='subway'&&d.path.at(-1).id===next.path[0].id;
+    const prev=details[i-1],next=details[i+1],insideBefore=!!connections[i-1]?.internal,insideAfter=!!connections[i]?.internal;
     if(d.kind==='bus'){let ride=0;for(let j=1;j<d.path.length;j++)ride+=rideSeconds(d.path[j-1],d.path[j]);d.rideSeconds=ride;seconds.bus+=ride;seconds.wait+=opts.busWait*60;}
     else {const q=estimateMetroTime(data.network,data.times,data.region.id,[d.leg.slice(1)],{options:{waitMinutes:0,transferWalkMinutes:0,transferWaitMinutes:0,includeWalk:false}});d.rideSeconds=q.seconds.ride;seconds.rail+=q.seconds.ride;seconds.wait+=(insideBefore?opts.railTransferWait:opts.railWait)*60;if(!insideBefore)seconds.walk+=data.times.walking.entryMinutes*60;if(!insideAfter)seconds.walk+=data.times.walking.exitMinutes*60;}
-    if(i){const c=connections[i-1];c.seconds=c.internal?opts.railTransferWalk*60:c.meters*1.25/75*60+(d.kind==='bus'?60:0);seconds.walk+=c.seconds;}
+    if(i){const c=connections[i-1];c.seconds=c.internal?(c.indoor?.seconds??opts.railTransferWalk*60):c.meters*1.25/75*60+(d.kind==='bus'?60:0);seconds.walk+=c.seconds;}
   });
   if(opts.includeWalk)for(const [place,node,side]of [[fromPlace,details[0].path[0],'from'],[toPlace,details.at(-1).path.at(-1),'to']]){
     if(!place)continue;const meters=groundMeters([place.latitude,place.longitude],[node.lat,node.lng]);if(meters>15000)throw Error('access-too-far');const walk=meters*1.25/75*60;seconds.walk+=walk;access.push({side,meters:Math.round(meters),seconds:walk});
