@@ -1,8 +1,8 @@
-import {readMetroNote,metroStatus,metroGraph,metroPaths,findMetroRoutes,validateMetroPlan,metroSummary,routeContainsTransfers,isAutoMetroTime} from './metro-core.js?v=web-9';
-import {createNetworkMap} from './metro-map.js?v=web-9';
-export * from './metro-core.js?v=web-9';
-import {estimateMetroTime,timingSnapshot,projectedArrivals} from './metro-time.js?v=web-9';
-import {clock} from './core.js?v=web-9';
+import {readMetroNote,metroStatus,metroGraph,metroPaths,findMetroRoutes,validateMetroPlan,metroSummary,routeContainsTransfers,isAutoMetroTime} from './metro-core.js?v=web-10';
+import {createNetworkMap} from './metro-map.js?v=web-10';
+export * from './metro-core.js?v=web-10';
+import {estimateMetroTime,timingSnapshot,projectedArrivals} from './metro-time.js?v=web-10';
+import {clock} from './core.js?v=web-10';
 
 export function createMetroPlanner(ctx){
   const {t,h,modal,modalTop,openModal,toast}=ctx;
@@ -94,27 +94,31 @@ export function createMetroPlanner(ctx){
     openModal(`${modalTop(t('Full subway map','전체 지하철 노선도'))}<div class="network-heading"><p>${t('See all lines together. Tap stations to build your route.','모든 노선을 한눈에 보고, 역을 눌러 경로를 만드세요.')}</p><span>${r.lines.length}${t(' lines','개 노선')} · ${Object.keys(r.stations).length}${t(' stations','개 역')}</span></div><div class="network-layout"><section class="network-map-column"><div class="network-top-controls form-grid"><label>${t('Region','지역')}<select id="metroRegion" ${draft.from||draft.to||draft.vias.length?'disabled':''}>${network.regions.map(r=>`<option value="${r.id}" ${r.id===draft.region?'selected':''}>${h(label(r))}</option>`).join('')}</select></label><label>${t('Find a station · Korean or English','역 찾기 · 한글·영어')}<input id="metroSearch" type="search" autocomplete="off" placeholder="${t('e.g. Hongik, Seoul, Busan','예: 홍대입구, 서울역, 부산역')}"></label></div><div id="metroSearchResults" class="network-search-results" role="status"></div>${mapHTML()}<details class="network-sources"><summary>${t('Official maps & data sources','공식 노선도·자료 출처')}</summary><p class="note">${t('Line information checked','노선 정보 확인')} ${network.checkedAt}. ${t('Position data: OpenStreetMap; adjusted for this schematic.','위치 자료: OpenStreetMap · 개략도에 맞게 배치 조정.')}</p>${r.sources.map(s=>`<a href="${s.url}" target="_blank" rel="noopener noreferrer">${h(s.name)} ↗</a>`).join('')}<a href="./metro-layout.json" download>Map layout · ODbL-1.0</a>${r.id==='busan'?`<a href="https://www.data.go.kr/data/3033564/fileData.do" target="_blank" rel="noopener">${t('Humetro reference travel times ↗','부산교통공사 역간 기준시간 ↗')}</a>`:''}</details></section><section class="network-route-column"><div class="row between"><h3>${t('My route','내 지하철 경로')}</h3><button type="button" class="text-btn" data-metro="reset">${t('Start over','새로 짜기')}</button></div>${selections()}<div id="networkRoutes">${routeHTML()}</div><form id="metro-form" class="form-grid"><label>${t('Save to itinerary movement','저장할 일정 이동 구간')}<select id="metroTarget" required><option value="">${t('Choose a movement','이동 구간 선택')}</option>${draft.existing&&targetIndex===0?`<option value="${draft.target}" selected>${t('First place · choose a movement or remove','첫 장소 · 이동 구간을 선택하거나 경로를 삭제하세요')}</option>`:''}${d?.stops.slice(1).map((s,i)=>`<option value="${s.id}" ${draft.target===s.id?'selected':''}>${h(ctx.placeName(d.stops[i].place))} → ${h(ctx.placeName(s.place))}</option>`).join('')||''}</select></label>${(d?.stops.length||0)<2?`<p class="note">${t('Add at least two places to this day to save a route.','오늘 일정에 장소를 2곳 이상 추가하면 저장할 수 있어요.')}</p>`:''}${timingFields()}${ctx.getRouteKind?.(draft.target)==='bus'?`<p class="note">${t("Saving replaces this movement’s bus route.","저장하면 이 이동 구간의 기존 버스 경로를 지하철 경로로 바꿉니다.")}</p>`:''}<p id="metroError" role="alert" class="status error"></p><button type="submit" class="primary" ${!choice()||!draft.target||targetIndex<1||selectedTime()?.error?'disabled':''}>${t('Save subway route','지하철 경로 저장')}</button></form>${draft.existing?`<button type="button" data-metro="remove" class="text-btn">${t('Remove saved subway route','저장된 지하철 경로 삭제')}</button>`:''}</section></div>`);
     modal.classList.add('metro-modal','network-modal');
     if(draft.view==='map')map=createNetworkMap({element:modal.querySelector('#metroNetwork'),region:r,layout:layout.regions[r.id],label,t,h,camera:draft.resetCamera?null:camera,onStation:(id,near)=>focus(id,near),onCamera:camera=>{const el=modal.querySelector('#networkZoom');if(el)el.textContent=camera.zoom.toFixed(1)+'×';}});
+    if(draft.pick){
+      const form=modal.querySelector('#metro-form'),target=form.querySelector('#metroTarget');target.closest('label').hidden=true;target.disabled=true;target.required=false;const timing=form.querySelector('fieldset');timing.hidden=true;timing.disabled=true;for(const p of form.querySelectorAll(':scope > p.note'))p.hidden=true;const button=form.querySelector('[type="submit"]');button.textContent=t('Use this subway section','이 지하철 구간 추가');button.disabled=!choice();modal.querySelector('#metroRegion').disabled=true;modal.querySelector('#modal-title').textContent=t('Pick a subway section','지하철 구간 선택');
+    }
     draft.resetCamera=false;updateMap();modal.scrollTop=scroll;
     if(draft.view==='readable'){
       const box=modal.querySelector('#readableStations');
       if(draft.readableScrollLine===draft.readableLine&&stationScroll!==undefined)box.scrollTop=stationScroll;
-      else {const id=draft.focused||(choice()?.legs.find(l=>l[0]===draft.readableLine)?.[1]),el=id?box.querySelector(`[data-id="${CSS.escape(id)}"]`):null;if(el)box.scrollTop=el.getBoundingClientRect().top-box.getBoundingClientRect().top-65;}
+      else {const id=draft.focused||(choice()?.legs.find(l=>l[0]===draft.readableLine)?.[1])||draft.from,el=id?box.querySelector(`[data-id="${CSS.escape(id)}"]`):null;if(el)box.scrollTop=el.getBoundingClientRect().top-box.getBoundingClientRect().top-65;}
       draft.readableScrollLine=draft.readableLine;
     }
   }
-  async function open(target){
+  async function open(target,pick=null){
     try{
       if(!network||!layout||!timeData){
-        if(!request)request=Promise.all(['metro-data.json','metro-layout.json','metro-times.json'].map(name=>fetch('./'+name+'?v=web-9').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{request=null;throw e;});
+        if(!request)request=Promise.all(['metro-data.json','metro-layout.json','metro-times.json'].map(name=>fetch('./'+name+'?v=web-10').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{request=null;throw e;});
         [network,layout,timeData]=await request;
       }
       map?.destroy();map=null;
-      const d=ctx.getDay(),s=d?.stops.find(s=>s.id===target),parsed=readMetroNote(s?.note);let plan=parsed.plan;
+      const d=ctx.getDay(),s=d?.stops.find(s=>s.id===target),parsed=readMetroNote(s?.note);let plan=pick?.plan||parsed.plan;
       try{if(plan)validateMetroPlan(network,plan);}catch{plan=null;}
-      const city=ctx.getCity(),id=plan?.region||(/부산|busan|김해|gimhae|울산|ulsan/i.test(city)?'busan':/대구|daegu/i.test(city)?'daegu':/대전|daejeon/i.test(city)?'daejeon':/광주|gwangju/i.test(city)?'gwangju':'capital');
+      const city=ctx.getCity(),id=pick?.region||plan?.region||(/부산|busan|김해|gimhae|울산|ulsan/i.test(city)?'busan':/대구|daegu/i.test(city)?'daegu':/대전|daejeon/i.test(city)?'daejeon':/광주|gwangju/i.test(city)?'gwangju':'capital');
       const r=network.regions.find(r=>r.id===id);
       const legacyVias=plan?.legs.slice(1).map(l=>l[1]).filter((v,i,all)=>metroGraph(r).membership.get(v).size>1&&all.indexOf(v)===i)||[];
       draft={view:'readable',readableLine:plan?.legs[0][0]||r.lines[0].id,region:id,from:plan?.legs[0][1]||'',to:plan?.legs.at(-1)[2]||'',vias:plan?.vias||legacyVias,options:plan?[{legs:structuredClone(plan.legs),changes:plan.legs.length-1,stops:plan.legs.reduce((sum,[id,a,b,next])=>sum+(metroPaths(r.lines.find(l=>l.id===id),a,b).find(p=>p[1]===next)?.length||1)-1,0)}]:[],choice:0,focused:'',nearby:[],highlight:'',target:s?.id||'',timeMode:plan&&(plan.timing?.mode==='manual'||(s?.travelMinutes!=null&&!isAutoMetroTime(s)))?'manual':'auto',manualMinutes:plan?String(s?.travelMinutes??''):'',timingOptions:{...timeData.defaults,...plan?.timing?.options},existing:!!parsed.plan,tripID:ctx.getTripID(),dayID:d?.id,resetCamera:true};
+      draft.pick=pick;if(pick){draft.target='';draft.existing=false;draft.timeMode='auto';draft.timingOptions.includeWalk=false;if(!plan&&pick.seedFrom){draft.from=pick.seedFrom;draft.readableLine=serving(pick.seedFrom)[0]?.id||draft.readableLine;}}
       draw();
       if(parsed.plan&&metroStatus(parsed,d.stops[d.stops.indexOf(s)-1],s)==='stale')toast(t('Review this route for the changed itinerary before saving.','일정 순서가 바뀌었습니다. 경로를 확인한 뒤 다시 저장해주세요.'));
     }catch{toast(t('Could not load subway maps. Check your connection and retry.','지하철 노선도를 불러오지 못했습니다. 연결을 확인한 뒤 다시 열어주세요.'));}
@@ -170,6 +174,7 @@ export function createMetroPlanner(ctx){
   modal.addEventListener('submit',async e=>{
     if(e.target.id!=='metro-form')return;e.preventDefault();if(!choice()||draft.saving)return;
     try{
+      if(draft.pick){const plan={v:1,region:draft.region,from:'',to:'',legs:choice().legs,...(draft.vias.length?{vias:draft.vias}:{})};validateMetroPlan(network,plan);const pick=draft.pick;draft.pick=null;map?.destroy();map=null;await pick.onSelect({kind:'subway',plan});return;}
       const d=ctx.getDay(),i=d?.stops.findIndex(s=>s.id===draft.target);
       if(ctx.getTripID()!==draft.tripID||d?.id!==draft.dayID||i<1)throw Error('changed');
       const quote=selectedTime();if(!quote||quote.error)throw Error(quote?.error||'time');const minutes=quote.minutes;
@@ -179,6 +184,6 @@ export function createMetroPlanner(ctx){
       if(!await ctx.onSave({...draft,plan,summary:metroSummary(network,plan),minutes})){draft.saving=false;e.target.querySelector('[type="submit"]').disabled=false;}
     }catch(error){draft.saving=false;const button=modal.querySelector('#metro-form [type="submit"]');if(button)button.disabled=false;modal.querySelector('#metroError').textContent=error.message==='note-too-long'?t('The route and note exceed 2,000 characters. Shorten the note or choose fewer transfers.','경로와 메모가 2,000자를 넘습니다. 메모를 줄이거나 환승역을 줄여주세요.'):t('Check the route and movement, then try again.','경로와 저장할 이동 구간을 확인한 뒤 다시 시도해주세요.');}
   });
-  modal.addEventListener('close',()=>{map?.destroy();map=null;});
+  modal.addEventListener('close',()=>{map?.destroy();map=null;const pick=draft?.pick;if(pick){draft.pick=null;pick.onCancel?.();}});
   return {open};
 }

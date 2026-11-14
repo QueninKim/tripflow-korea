@@ -1,6 +1,6 @@
-import {busGraph,busStopName} from './bus-core.js?v=web-9';
+import {busGraph,busStopName} from './bus-core.js?v=web-10';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-export function createBusMap({element,region,line,all=false,route=[],from,to,vias=[],focus,onStation,onCamera,camera,t,lang}){
+export function createBusMap({element,region,line,all=false,route=[],walks=[],from,to,vias=[],focus,onStation,onCamera,camera,t,lang}){
   const g=busGraph(region),lat0=Object.values(region.stops)[0].lat,cos=Math.cos(lat0*Math.PI/180),points=Object.fromEntries(Object.entries(region.stops).map(([id,s])=>[id,[s.lng*cos*111200,-s.lat*111200]]));
   const ids=Object.keys(points),bounds=arr=>{const p=arr.map(id=>points[id]).filter(Boolean);return [Math.min(...p.map(x=>x[0])),Math.min(...p.map(x=>x[1])),Math.max(...p.map(x=>x[0])),Math.max(...p.map(x=>x[1]))];};
   const whole=bounds(ids),selected=()=>[...new Set([...(g.routes.get(line)?.stops||[]),...route.flatMap(([id,a,b])=>g.routes.get(id).stops.slice(a,b+1)),from,to,...vias].filter(Boolean))];
@@ -18,6 +18,7 @@ export function createBusMap({element,region,line,all=false,route=[],from,to,via
     if(all)for(const r of region.routes)stroke(r.stops,r.color,1,.15);
     const l=g.routes.get(line);if(l)stroke(l.stops,l.color,3,1,true);
     for(const [id,a,b]of route){const r=g.routes.get(id);stroke(r.stops.slice(a,b+1),'#fff',9);stroke(r.stops.slice(a,b+1),r.color,5,1,true);}
+    for(const link of walks){c.setLineDash([5,4]);stroke(link.stops,'#526b60',2);c.setLineDash([]);}
     const pins=new Map([[from,t('S','출')],[to,t('E','도')],...vias.map((v,i)=>[v,String(i+1)])].filter(x=>x[0]));const important=new Set([...selected(),focus].filter(Boolean)),candidates=all&&state.zoom>=5?ids:[...important];visible=[];
     for(const id of candidates){const [x,y]=screen(id);if(x<-18||y<-18||x>width+18||y>height+18)continue;visible.push({id,x,y});const pin=pins.get(id),focused=id===focus;c.beginPath();c.arc(x,y,pin?10:focused?7:3.6,0,Math.PI*2);c.fillStyle=pin?'#216767':'#fff';c.fill();c.strokeStyle=focused?'#db503b':l?.color||'#326c75';c.lineWidth=pin?2:1.6;c.stroke();if(pin){c.fillStyle='#fff';c.font='bold 11px system-ui';c.textAlign='center';c.textBaseline='middle';c.fillText(pin,x,y);}}
     const occupied=[];const ordered=[...visible].sort((a,b)=>(pins.has(b.id)?100:0)+(b.id===focus?90:0)-(pins.has(a.id)?100:0)-(a.id===focus?90:0));
