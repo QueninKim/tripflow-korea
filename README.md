@@ -152,3 +152,52 @@ The selected result shows a combined position map, ride directions, stop codes, 
 Routing normally runs in a module Web Worker and never sends coordinates to an external route provider. Endpoint changes and cancellation terminate the worker; late results are discarded. A local fallback handles environments without module workers. New-place search is a separate explicit network request with its existing geocoder privacy/availability constraints.
 
 Validation: **69 calculation/data/storage tests**, **12 existing manual-composer DOM checks**, and **18 automatic-planner DOM checks** pass. Synthetic routes are cross-checked with an independent exhaustive candidate enumeration; all five real regions produce independently re-quoted matching totals. Tests cover direction, repeated platforms, transfer/walking bounds, wait changes, saved notes, stale workers, cancellation, direct walking, English/Korean, storage rollback and new-place append behaviour. The unchanged native model round-trips both automatic transit and walking plans. DOM/canvas-stub tests do not verify rendered browser layout, touch geometry or physical iPhone behaviour; those checks were unavailable for this release. Run `pnpm test:auto-flows` for the new interaction checks.
+
+## 실시간 도착정보 신청 · 준비 상태
+
+**현재 공개 홈페이지는 web-12 버스·지하철 통합 검색·예상시간 방식입니다. 실시간 기능은 적용하지 않았습니다.** 인증키가 없는 상태이며, `server/`의 중계·계산 코드는 배포 전 준비본입니다. 키 발급, 서버 연결, 정류소·노선·방향 매핑 및 실제 응답 검증이 끝나야 실시간 경로를 켤 수 있습니다. 기존 앱·홈페이지의 일정과 경비는 변경하지 않았습니다.
+
+### 먼저 신청할 두 가지
+
+1. **서울 지하철:** [서울 열린데이터광장 인증키 신청](https://data.seoul.go.kr/together/mypage/actkeyMain.do)에 로그인하고 **실시간 지하철용 인증키**를 신청합니다. 일반 인증키와 구분합니다. 사용할 데이터는 [서울시 지하철 실시간 도착정보](https://data.seoul.go.kr/dataList/OA-12764/A/1/datasetView.do)입니다. 공식 안내상 기본 하루 1,000회 제한이 있으며, 운영 서비스의 활용사례 등록·승인 후 제한 해제를 신청할 수 있습니다. [공식 이용 안내](https://data.seoul.go.kr/together/guide/useGuide.do), [공식 FAQ](https://data.seoul.go.kr/together/notice/faqList.do).
+2. **서울 버스:** [서울특별시 버스도착정보조회 서비스](https://www.data.go.kr/data/15000314/openapi.do)에 공공데이터포털 계정으로 로그인하고 **활용신청**합니다. 비용은 무료로 안내되어 있습니다. 승인 상태와 일반 인증키를 마이페이지에서 확인합니다.
+
+신청서에서 사용할 내용:
+
+- 서비스명: **TripFlow Korea**
+- 서비스 주소: **https://queninkim.github.io/tripflow-korea/** (실제 웹페이지 주소)
+- 활용목적: **외국인 대상 국내 여행플래너의 버스·지하철 실시간 도착정보와 환승 경로 추천**
+- 유형 선택란이 있다면 웹서비스를 기준으로 입력합니다. 실제 화면의 필수 항목·승인 조건을 따릅니다.
+
+인증키 값은 채팅에 보내지 않습니다. 서버의 비공개 환경변수 `SEOUL_SUBWAY_KEY`, `SEOUL_BUS_KEY`에 등록합니다. 소스, `dist/`, 공개 GitHub 저장소, 앱 설정의 공개 입력란에 넣지 않습니다. 발급 완료 여부만 알려주면 서버 연결과 등록 단계를 이어갈 수 있습니다.
+
+### 다른 지역 버스
+
+공공데이터포털에서 다음 무료 API도 각각 활용신청합니다. 같은 포털 키가 표시되더라도 각 서비스 이용 승인 여부를 확인해야 합니다.
+
+- [국토교통부(TAGO) 버스도착정보](https://www.data.go.kr/data/15098530/openapi.do)
+- [국토교통부(TAGO) 버스노선정보](https://www.data.go.kr/data/15098529/openapi.do)
+- [국토교통부(TAGO) 버스정류소정보](https://www.data.go.kr/data/15098534/openapi.do)
+
+TAGO의 제공 도시는 도시코드 조회로 확인합니다. 현재 앱의 지역별 정류소·노선 ID와 TAGO ID를 대조해야 하므로 정류소명이나 노선번호만으로 연결하지 않습니다. 미지원 도시는 예상시간을 유지합니다. TAGO 버스 키로 지역 지하철 실시간 도착정보가 제공된다고 가정하지 않습니다. 수도권 외 지하철은 운영사별 실제 제공 여부와 인터페이스를 추가 확인해야 합니다.
+
+### 준비된 코드와 남은 검증
+
+`server/arrival-gateway.mjs`는 서버 비밀키로 서울 지하철·서울 버스·TAGO 버스 요청을 구성합니다. 고정 공급자 주소, 입력 검사, 8초 요청 제한, 15초 캐시, 동시 동일 요청 합치기, 오류 시 키 비노출, 출처 반환이 포함됩니다. `server/api/arrivals.mjs`는 연결 후 사용할 Vercel Node 함수 진입점이며, 서버 프로젝트 루트는 `server/`입니다. 서버는 아직 배포되지 않았고 Vercel 연결도 확인되지 않았습니다. 앱의 기존 GitHub Pages 주소를 유지하면서 API만 별도로 둘 수 있습니다.
+
+서울 공식 명세의 HTTP 주소에서 공개 지하철 샘플은 형식 검증에 성공했고, 버스 주소는 인증키 누락 응답을 반환했습니다. 두 서울 호스트의 HTTPS 요청은 이 환경에서 시간 초과되었습니다. 실제 키가 있는 호출, 서버 배포 환경에서의 공급자 연결 및 전송 방식은 재검증해야 합니다. 앱에서 중계 서버로의 연결은 HTTPS를 사용합니다. 공개 샘플은 실제 서비스 인증키 검증을 대체하지 않습니다.
+
+`server/live-wait.mjs`는 정류소까지 도보와 앞 구간 이동시간을 계산한 뒤 탈 수 있는 다음 차량을 선택하는 순수 계산 모듈입니다. 90초보다 오래된 정보, 반대 방향·미확인 ID·종착지/정차 패턴 미검증 정보는 실제 도착정보로 취급하지 않습니다. 오늘의 현재 출발에만 적용하고 미래·지난 날짜 일정에는 모델 대기를 유지합니다. 후보 재정렬은 전체 네트워크의 실시간 최단을 보장하지 않으므로 `provided-candidates`, `certified:false`를 명시합니다. 현재 전역 경로 탐색기에 연결되지 않았습니다.
+
+실제 활성화 전에 남은 작업: 인증키·서버 연결, 전체 정류소/노선/운행방향/종착지 매핑 검증, 전역 탐색의 시간 의존 대기 반영, 현재 출발과 예정 일정 구분 UI, 구간별 실시간/예상 표시와 조회시각·재조회 처리, 저장 스냅샷/네이티브 검증, 실제 응답으로 전 구간 테스트, 브라우저·아이폰 검증. 현재 캐시와 호출량 제한은 서버 인스턴스 단위이므로 공개 활성화 전 공유 캐시·전역 공급자 호출 제한을 추가해야 합니다. CORS는 인증이나 전역 호출 제한을 대신하지 않습니다.
+
+준비본 검증: 새 서버/계산 테스트 **14개 통과**, 기존 계산·자료·저장 테스트 69개를 포함해 총 **83개 통과**. 실시간 운영 연동 완료를 뜻하지 않습니다. 배포 상태와 준비본 상태는 `Deployment.json`과 `RealtimeStaging.json`에서 구분합니다.
+
+
+## Unified Directions entry · web-12
+
+The standard **Directions / 길찾기** button on an itinerary movement opens the built-in bus/subway search. **Search directions / 이동경로 검색** in My Trip and **Bus & subway directions / 버스·지하철 길찾기** in Essentials open the same planner. Departure and destination are prefilled for an itinerary movement. Both bus and rail are compared together without selecting a transport mode first. The duplicate Auto route action is removed from each stop; individual map buttons and the manual section editor remain available. The standard action stays in the app; an explicitly labelled Kakao Maps link is available after the results.
+
+The existing web-11 engine, source coverage, timing model and native save contract are unchanged. Direct walking, a single mode or a mixed route can win by estimated total time. Saving applies the selected movement duration and later arrival times, or appends a newly chosen journey using the existing append rules. The main Directions button also opens this combined comparison when the sample movement was previously marked walking.
+
+The real-time integration prototype in `server/` remains disconnected. The user's current request is handled by the existing regional datasets and estimated waits; API key registration and a new backend are not required for this combined-search release.
