@@ -1,16 +1,18 @@
-import {createLocationService} from './current-location.js?v=web-15';
-import {createPlaceMapViewer} from './place-map.js?v=web-15';
-import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState,budgetCurrencies,budgetAmount,convertedBudget,budgetTotal,convertedExpense,expenseRateKey,expenseRateEntries} from './core.js?v=web-15';
+import {createTransitRefresher} from './transit-refresh.js?v=web-16';
+import {applyTransitResults} from './transit-refresh-core.js?v=web-16';
+import {createLocationService} from './current-location.js?v=web-16';
+import {createPlaceMapViewer} from './place-map.js?v=web-16';
+import {uuid,now,toDate,escapeHTML as h,arrivals,clock,validState,invalidate,sampleState,budgetCurrencies,budgetAmount,convertedBudget,budgetTotal,convertedExpense,expenseRateKey,expenseRateEntries} from './core.js?v=web-16';
 
-import {createMetroPlanner} from './metro.js?v=web-15';
-import {createJourneyViewer} from './journey-view.js?v=web-15';
-import {createAutoPlanner} from './auto.js?v=web-15';
-import {autoSummary,sameAutoPlace} from './auto-core.js?v=web-15';
-import {createMixedPlanner} from './mixed.js?v=web-15';
-import {createBusPlanner} from './bus.js?v=web-15';
-import {readTransitNote,mergeTransitNote,transitStatus,isAutoTransitTime,setTransitManualTime} from './transit-note.js?v=web-15';
+import {createMetroPlanner} from './metro.js?v=web-16';
+import {createJourneyViewer} from './journey-view.js?v=web-16';
+import {createAutoPlanner} from './auto.js?v=web-16';
+import {autoSummary,sameAutoPlace} from './auto-core.js?v=web-16';
+import {createMixedPlanner} from './mixed.js?v=web-16';
+import {createBusPlanner} from './bus.js?v=web-16';
+import {readTransitNote,mergeTransitNote,transitStatus,isAutoTransitTime,setTransitManualTime} from './transit-note.js?v=web-16';
 
-const VERSION='web-15';
+const VERSION='web-16';
 const native=!!window.webkit?.messageHandlers?.tripflow;
 const bridge=(command,payload={})=>window.webkit.messageHandlers.tripflow.postMessage({command,...payload});
 let nativeFeatures={};
@@ -101,6 +103,12 @@ async function searchRoutePlaces(term){
 }
 const autoPlanner=createAutoPlanner({...transitContext,getPlaces:()=>[...(trip()?.days.flatMap(d=>d.stops.map(s=>s.place))||[]),...catalog],searchPlaces:searchRoutePlaces,onSave:draft=>saveAutomaticJourney(draft),onRemove:draft=>saveTransitRoute('auto',draft)});
 const placeMapViewer=createPlaceMapViewer({...transitContext,onDirections:(to,fix)=>autoPlanner.open('',{to,fromFix:fix,useCurrent:!fix})});
+async function applyRefreshedTransit(active){
+  const d=day();if(trip()?.id!==active.tripID||d?.id!==active.dayID||JSON.stringify(d)!==active.before)throw Error('changed');
+  const before=d.stops;d.stops=applyTransitResults(d,active.results).stops;
+  if(await save()){render();return true;}d.stops=before;render();return false;
+}
+const transitRefresher=createTransitRefresher({...transitContext,onApply:applyRefreshedTransit,onDirections:id=>autoPlanner.open(id),onMap:id=>journeyViewer.open(id)});
 function invalidateTransitDay(d){invalidate(d);for(const s of d.stops)s.note=setTransitManualTime(s.note,null);}
 function planPage(){
   const tr=trip();
@@ -109,7 +117,7 @@ function planPage(){
   const d=day(),times=arrivals(d),spent=tr.expenses.reduce((s,e)=>s+e.amountKRW,0);
   return `<div class="trip-heading"><div><h1 style="margin-top:11px">${h(title(tr))}</h1><div class="row wrap trip-meta">${pill(cityName(tr.city))}${pill(toDate(tr.startDate).toLocaleDateString(data.language==='ko'?'ko-KR':'en-US',{month:'short',day:'numeric'}))}${pill(tr.days.length+t(' days','일'))}</div></div></div>
   <div class="day-tabs" aria-label="${t('Travel days','여행 날짜')}">${tr.days.map((d,i)=>btn('day',t('Day ','')+(i+1)+t('','일차'),i===dayIndex?'active':'',`data-index="${i}"`)).join('')}</div>
-  <div class="plan-layout"><section><div class="row between"><h2>${t('Today, at your pace.','오늘, 나의 속도로.')}</h2>${btn('dayStart',clock(d.startMinutes),'text-btn',`aria-label="${t('Change start time','시작 시간 변경')}"`)}</div><div class="itinerary">${d.stops.length?d.stops.map((s,i)=>`<article class="stop"><div class="time">${clock(times[i])}</div><div class="panel">${i?`<div class="route-label">${h(modeName(s.mode))} · ${s.travelMinutes==null?t('Time not set','이동시간 미정'):s.travelMinutes+t(' min','분')+' · '+h(durationLabel(s))}</div>`:''}<div class="stop-title"><button data-action="editStop" data-id="${s.id}">${h(placeName(s.place))}</button><span class="muted">${i+1}</span></div><p class="address muted">${h(s.place.address)}</p><div class="row wrap">${pill(t('Stay ','체류 ')+s.stayMinutes+t(' min','분'))}${readTransitNote(s.note).note?`<small>${h(readTransitNote(s.note).note)}</small>`:''}</div>${subwayCard(s,d.stops[i-1])}<div class="stop-tools">${btn('editStop',t('Edit','수정'),'text-btn',`data-id="${s.id}"`)}${btn('stopMap',t('Map','지도 보기'),'text-btn',`data-id="${s.id}"`)}${i||readTransitNote(s.note).kind==='auto'?btn('route',t('Directions','길찾기'),'route-search-btn',`data-id="${s.id}"`):''}${i||readTransitNote(s.note).kind==='mixed'?btn('mixed',t('Edit sections','직접 조합'),'text-btn',`data-id="${s.id}"`):''}${i||readTransitNote(s.note).kind==='bus'?btn('bus',t('Bus map','버스 노선도'),'text-btn',`data-id="${s.id}"`):''}${i||readTransitNote(s.note).plan?btn('subway',t('Subway map','지하철 노선도'),'text-btn',`data-id="${s.id}"`):''}${i?btn('moveUp','↑','text-btn',`data-id="${s.id}" aria-label="${t('Move earlier','앞으로 이동')}"`):''}</div></div></article>`).join(''):`<div class="empty"><h3>${t('The day is yours.','아직 비어 있는 하루예요.')}</h3><p>${t('Start with a place that catches your eye.','마음이 가는 장소부터 추가해보세요.')}</p></div>`}</div><div class="row wrap" style="margin-top:20px">${btn('explore',t('＋ Add a place','＋ 장소 추가'),'primary')}${btn('tripMap',t('⌖ See map','⌖ 지도 보기'))}${btn('route',t('Search directions','이동경로 검색'),'primary')}${btn('mixed',t('Build sections','구간 직접 조합'))}${btn('subway',t('Subway maps','지하철 노선도'))}${btn('bus',t('Bus maps','버스 노선도'))}${btn('refreshRoutes',t('Update travel times','이동시간 조회'),'text-btn')}</div><p class="note" style="margin-top:13px">${t('A dash means travel time is unknown. Sample times are labelled. Saving a bus or subway route applies its estimated time to your itinerary.','— 표시는 이동시간 미정입니다. 예시 시간은 별도 표시됩니다. 버스·지하철 경로를 저장하면 예상시간이 일정에 반영됩니다.')}</p></section>
+  <div class="plan-layout"><section><div class="row between"><h2>${t('Today, at your pace.','오늘, 나의 속도로.')}</h2>${btn('dayStart',clock(d.startMinutes),'text-btn',`aria-label="${t('Change start time','시작 시간 변경')}"`)}</div><div class="itinerary">${d.stops.length?d.stops.map((s,i)=>`<article class="stop"><div class="time">${clock(times[i])}</div><div class="panel">${i?`<div class="route-label">${h(modeName(s.mode))} · ${s.travelMinutes==null?t('Time not set','이동시간 미정'):s.travelMinutes+t(' min','분')+' · '+h(durationLabel(s))}</div>`:''}<div class="stop-title"><button data-action="editStop" data-id="${s.id}">${h(placeName(s.place))}</button><span class="muted">${i+1}</span></div><p class="address muted">${h(s.place.address)}</p><div class="row wrap">${pill(t('Stay ','체류 ')+s.stayMinutes+t(' min','분'))}${readTransitNote(s.note).note?`<small>${h(readTransitNote(s.note).note)}</small>`:''}</div>${subwayCard(s,d.stops[i-1])}<div class="stop-tools">${btn('editStop',t('Edit','수정'),'text-btn',`data-id="${s.id}"`)}${btn('stopMap',t('Map','지도 보기'),'text-btn',`data-id="${s.id}"`)}${i||readTransitNote(s.note).kind==='auto'?btn('route',t('Directions','길찾기'),'route-search-btn',`data-id="${s.id}"`):''}${i?btn('refreshRoutes',t('Time for this leg','이 구간 시간'),'text-btn',`data-id="${s.id}" aria-label="${t('Calculate transit time','대중교통 시간 조회')} · ${h(placeName(d.stops[i-1].place))} → ${h(placeName(s.place))}"`):''}${i||readTransitNote(s.note).kind==='mixed'?btn('mixed',t('Edit sections','직접 조합'),'text-btn',`data-id="${s.id}"`):''}${i||readTransitNote(s.note).kind==='bus'?btn('bus',t('Bus map','버스 노선도'),'text-btn',`data-id="${s.id}"`):''}${i||readTransitNote(s.note).plan?btn('subway',t('Subway map','지하철 노선도'),'text-btn',`data-id="${s.id}"`):''}${i?btn('moveUp','↑','text-btn',`data-id="${s.id}" aria-label="${t('Move earlier','앞으로 이동')}"`):''}</div></div></article>`).join(''):`<div class="empty"><h3>${t('The day is yours.','아직 비어 있는 하루예요.')}</h3><p>${t('Start with a place that catches your eye.','마음이 가는 장소부터 추가해보세요.')}</p></div>`}</div><div class="row wrap" style="margin-top:20px">${btn('explore',t('＋ Add a place','＋ 장소 추가'),'primary')}${btn('tripMap',t('⌖ See map','⌖ 지도 보기'))}${btn('route',t('Search directions','이동경로 검색'),'primary')}${btn('mixed',t('Build sections','구간 직접 조합'))}${btn('subway',t('Subway maps','지하철 노선도'))}${btn('bus',t('Bus maps','버스 노선도'))}${btn('refreshRoutes',t('Update travel times','이동시간 조회'),'text-btn')}</div><p class="note" style="margin-top:13px">${t('A dash means travel time is unknown. Sample times are labelled. Update travel times calculates transit for this day. Saved route choices are kept, and estimated times update the itinerary.','— 표시는 이동시간 미정입니다. 예시 시간은 별도 표시됩니다. 이동시간 조회를 누르면 이날 각 구간의 대중교통 예상시간을 계산합니다. 저장한 경로는 유지하고 이후 일정 시각도 반영합니다.')}</p></section>
   <aside class="plan-aside"><div class="panel summary-card"><div class="eyebrow">${t('ROOM TO EXPLORE','더 누릴 수 있는 여행')}</div><h2>${krw(tr.budgetKRW-spent)}</h2><small>${t('left in your trip budget','남은 여행 예산')} · ${h(homeMoney(tr.budgetKRW-spent))}</small><div style="margin-top:17px">${btn('budget',t('View budget →','경비 보기 →'),'text-btn',`style="color:white"`)}</div></div><div class="panel tip-card"><div class="eyebrow">A GOOD DAY IN KOREA</div><h3 style="margin-top:12px">${t('Leave a little unplanned.','계획 사이에 여유를 두세요.')}</h3><p>${t('A side street, a market stall, one more coffee. The best part might be between your stops.','골목길, 시장 구경, 커피 한 잔. 여행의 즐거움은 일정 사이에 숨어 있을지도 몰라요.')}</p></div></aside></div><div class="row wrap" style="margin-top:28px">${btn('share',t('Share itinerary','일정 공유'),'text-btn')}${btn('editTrip',t('Trip settings','여행 설정'),'text-btn')}</div>`;
 }
 function placeCard(p,live=false){return `<button class="place-card" data-action="place" data-id="${h(p.id)}" ${live?'data-live="true"':''}><span class="place-icon" aria-hidden="true">${icon(p.category)}</span><span><strong>${h(placeName(p))}</strong>${p.koreanName&&p.koreanName!==p.name?`<small>${h(data.language==='ko'?p.name:p.koreanName)}</small>`:''}<small>${h(p.address)}</small></span><span class="add" aria-hidden="true">⊕</span></button>`;}
@@ -164,7 +172,7 @@ function toolsPage(){
 }
 function openModal(content,{locked=false}={}){
   modal.dispatchEvent(new Event('tripflow:replace'));
-  modal.classList.remove('metro-modal','network-modal','bus-modal','mixed-modal','auto-modal','journey-view-modal','place-map-modal');modal.innerHTML=content;modal.dataset.locked=locked?'true':'false';modal.showModal();
+  modal.classList.remove('metro-modal','network-modal','bus-modal','mixed-modal','auto-modal','journey-view-modal','place-map-modal','transit-refresh-modal');modal.innerHTML=content;modal.dataset.locked=locked?'true':'false';modal.showModal();
 }
 function modalTop(title,locked=false){return `<div class="modal-top"><h2 id="modal-title">${title}</h2>${locked?'':btn('close','×','icon-btn',`aria-label="${t('Close','닫기')}"`)}</div>`;}
 function languageModal(){
@@ -377,17 +385,7 @@ async function shareText(text,name='TripFlow-itinerary.txt'){
   download(text,name,'text/plain');
 }
 function download(text,name,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);}
-async function refreshRoutes(){
-  if(!native){toast(t('Use directions or enter travel times. Automatic driving / walking estimates are available in the iPhone app.','길찾기를 보거나 시간을 직접 입력해주세요. 도보·자동차 시간 조회는 아이폰 앱에서 지원합니다.'));return;}
-  const d=day();if(!d||d.stops.length<2)return;
-  const before=JSON.stringify(d),tripID=trip().id,dayID=d.id;
-  toast(t('Checking walking and driving routes…','도보·자동차 이동시간을 확인 중…'));
-  const response=await bridge('routes',{day:d});
-  const current=data.trips.find(x=>x.id===tripID)?.days.find(x=>x.id===dayID);
-  if(!current||JSON.stringify(current)!==before){toast(t('The itinerary changed. Please try again.','일정이 변경됐습니다. 다시 조회해주세요.'));return;}
-  for(const r of response){const s=current.stops.find(x=>x.id===r.id);if(s&&!((s.mode==='transit'||readTransitNote(s.note).kind==='auto')&&readTransitNote(s.note).plan)){s.travelMinutes=r.minutes;s.durationSource=r.source;}}
-  await save();render();toast(t(`Updated ${response.length} route(s). Use in-app directions for transit.`,`${response.length}개 경로를 갱신했습니다. 대중교통은 앱 안 길찾기에서 확인하세요.`));
-}
+async function refreshRoutes(target=''){await transitRefresher.start(target);}
 root.addEventListener('input',e=>{
   if(e.target.id!=='placeSearchField')return;
   query=e.target.value;generation++;results=[];searchError='';searched=false;searching=false;clearTimeout(debounce);updateSearch();
@@ -525,7 +523,7 @@ document.addEventListener('click',async e=>{
     if(a==='placeMap'){const p=findPlace(el.dataset.place);if(p)placeMapViewer.open([p]);return;}
     if(a==='stopMap'){const p=day().stops.find(s=>s.id===id)?.place;if(p)placeMapViewer.open([p]);return;}
     if(a==='tripMap'){placeMapViewer.open(day()?.stops.map(s=>s.place)||[]);return;}
-    if(a==='refreshRoutes'){await refreshRoutes();return;}
+    if(a==='refreshRoutes'){await refreshRoutes(id);return;}
     if(a==='moveUp'){const d=day(),i=d.stops.findIndex(s=>s.id===id);if(i>0){[d.stops[i],d.stops[i-1]]=[d.stops[i-1],d.stops[i]];invalidateTransitDay(d);await save();render();}return;}
     if(a==='removeStop'){day().stops=day().stops.filter(s=>s.id!==id);invalidateTransitDay(day());await save();modal.close();render();return;}
     if(a==='dayStart'){openModal(`${modalTop(t('Start your day','하루 시작 시간'))}<form id="start-form" class="form-grid"><label>${t('Start time','시작 시간')}<input name="time" type="time" required value="${clock(day().startMinutes)}"></label><button type="submit" class="primary">${t('Save','저장')}</button></form>`);return;}

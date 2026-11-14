@@ -1,18 +1,18 @@
-import {locationMessage} from './current-location.js?v=web-15';
-import {mixedData,busRegionID} from './mixed-core.js?v=web-15';
-import {inferAutoRegion,recommendAutoRoutes,autoOptions,autoTimingSnapshot,validateAutoPlan,sameAutoPlace,quoteAutoRoute} from './auto-core.js?v=web-15';
-import {readTransitNote} from './transit-note.js?v=web-15';
-import {createJourneyMap,journeyMapLegend,journeyMapNote} from './journey-map.js?v=web-15';
-import {projectedArrivals} from './metro-time.js?v=web-15';
-import {uuid,clock} from './core.js?v=web-15';
+import {locationMessage} from './current-location.js?v=web-16';
+import {mixedData,busRegionID} from './mixed-core.js?v=web-16';
+import {inferAutoRegion,recommendAutoRoutes,autoOptions,autoTimingSnapshot,validateAutoPlan,sameAutoPlace,quoteAutoRoute} from './auto-core.js?v=web-16';
+import {readTransitNote} from './transit-note.js?v=web-16';
+import {createJourneyMap,journeyMapLegend,journeyMapNote} from './journey-map.js?v=web-16';
+import {projectedArrivals} from './metro-time.js?v=web-16';
+import {uuid,clock} from './core.js?v=web-16';
 export function createAutoPlanner(ctx){
   const {t,h,modal,modalTop,openModal,toast}=ctx,buses=new Map();let common,commonRequest,draft,data,map,worker,timer,requestID=0,pickID=0;
   const label=s=>t(s.en||s.ko,s.ko),chosen=()=>draft.routes[draft.choice],placeLabel=p=>p?ctx.placeName(p):t('Choose a place','장소 선택');
   const places=()=>{const map=new Map(ctx.getPlaces().map(p=>[p.id,p]));for(const p of [draft?.from,draft?.to,...draft?.searchResults||[]])if(p)map.set(p.id,p);return [...map.values()];};
   async function load(a,b){
-    if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json','bus-index.json'].map(file=>fetch('./'+file+'?v=web-15').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});common=await commonRequest;
+    if(!commonRequest)commonRequest=Promise.all(['metro-data.json','metro-times.json','bus-index.json'].map(file=>fetch('./'+file+'?v=web-16').then(r=>{if(!r.ok)throw Error('data');return r.json();}))).catch(e=>{commonRequest=null;throw e;});common=await commonRequest;
     const region=inferAutoRegion(common[0],common[1],a,b);if(region.maxDistance>60000)throw Error('outside-region');const id=busRegionID(region.region);
-    if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-15');if(!r.ok)throw Error('data');buses.set(id,await r.json());}return mixedData(common[0],common[1],buses.get(id));
+    if(!buses.has(id)){const r=await fetch('./bus-'+id+'.json?v=web-16');if(!r.ok)throw Error('data');buses.set(id,await r.json());}return mixedData(common[0],common[1],buses.get(id));
   }
   function stopSearch(){requestID++;worker?.terminate();worker=null;clearTimeout(timer);if(draft)draft.busy=false;}
   function matchesMovement(){const d=ctx.getDay(),i=d?.stops.findIndex(s=>s.id===draft.target);return Number.isInteger(i)&&i>0&&sameAutoPlace(d.stops[i-1].place,draft.from)&&sameAutoPlace(d.stops[i].place,draft.to);}
@@ -45,7 +45,7 @@ export function createAutoPlanner(ctx){
     try{const local=await load(draft.from,draft.to);if(token!==requestID)return;data=local;const query={fromPlace:draft.from,toPlace:draft.to,options:autoOptions(draft.options)},payload={requestId:token,network:data.network,times:data.times,bus:data.bus,query};
       const finish=message=>{if(token!==requestID||!modal.open||!modal.classList.contains('auto-modal'))return;worker?.terminate();worker=null;clearTimeout(timer);draft.busy=false;if(message.error){draft.error=message.error;draft.routes=[];}else{draft.routes=message.result.routes;draft.limitedAlternatives=message.result.limitedAlternatives;draft.choice=0;if(savedPlan){try{validateAutoPlan(data,savedPlan);let index=draft.routes.findIndex(r=>r.quote.routeMode===savedPlan.routeMode&&JSON.stringify(r.legs)===JSON.stringify(savedPlan.legs));if(index<0){const quote=quoteAutoRoute(data,savedPlan.legs,{fromPlace:draft.from,toPlace:draft.to,options:draft.options});index=draft.routes.length;draft.routes.push({legs:structuredClone(savedPlan.legs),quote,certified:false});}draft.routes[index].saved=true;draft.choice=index;}catch{toast(t('The saved route needs review against the current data.','현재 자료로 저장된 경로를 다시 확인해주세요.'));}}}draw();};
       const fallback=()=>setTimeout(()=>{if(token!==requestID)return;try{finish({result:recommendAutoRoutes(data,query,{maxVisited:600000})});}catch(e){finish({error:e.message});}},0);
-      if(typeof Worker==='function'){try{worker=new Worker(new URL('./auto-worker.js?v=web-15',import.meta.url),{type:'module'});worker.onmessage=e=>{if(e.data.requestId===token)finish(e.data);};worker.onerror=()=>{worker?.terminate();worker=null;fallback();};worker.postMessage(payload);timer=setTimeout(()=>finish({error:'timeout'}),30000);}catch{fallback();}}
+      if(typeof Worker==='function'){try{worker=new Worker(new URL('./auto-worker.js?v=web-16',import.meta.url),{type:'module'});worker.onmessage=e=>{if(e.data.requestId===token)finish(e.data);};worker.onerror=()=>{worker?.terminate();worker=null;fallback();};worker.postMessage(payload);timer=setTimeout(()=>finish({error:'timeout'}),30000);}catch{fallback();}}
       else fallback();
     }catch(error){if(token!==requestID)return;draft.busy=false;draft.error=error.message;draw();}
   }
