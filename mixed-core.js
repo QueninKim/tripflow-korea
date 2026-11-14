@@ -1,6 +1,6 @@
-import {validateMetroPlan,metroPaths,metroTimingText} from './metro-core.js?v=web-10';
-import {validateBusPlan,busGraph,rideSeconds} from './bus-core.js?v=web-10';
-import {groundMeters,estimateMetroTime} from './metro-time.js?v=web-10';
+import {validateMetroPlan,metroPaths,metroTimingText} from './metro-core.js?v=web-11';
+import {validateBusPlan,busGraph,rideSeconds} from './bus-core.js?v=web-11';
+import {groundMeters,estimateMetroTime} from './metro-time.js?v=web-11';
 const START='[TripFlow Mixed v1]',END='[/TripFlow Mixed]';
 export const metroRegionID=id=>id==='seoul'?'capital':id;
 export const busRegionID=id=>id==='capital'?'seoul':id;
@@ -32,7 +32,7 @@ export function describeMixedLeg(data,leg){
 }
 export function mixedLegsFromSteps(steps){return steps.flatMap(s=>s.plan.legs.map(l=>[s.kind==='bus'?'b':'s',...l]));}
 export function mixedStepsFromLegs(data,legs){
-  const steps=[];for(const leg of legs){const kind=leg[0]==='b'?'bus':'subway';let last=steps.at(-1);if(last?.kind!==kind){last={kind,plan:kind==='bus'?{v:1,region:data.bus.id,data:data.bus.version,from:'',to:'',legs:[]}:{v:1,region:data.region.id,from:'',to:'',legs:[]}};steps.push(last);}last.plan.legs.push(leg.slice(1));}return steps;
+  const steps=[];for(const leg of legs){const kind=leg[0]==='b'?'bus':'subway';let last=steps.at(-1);if(last?.kind!==kind||(kind==='bus'&&last.plan.legs.at(-1)[0]===leg[1])){last={kind,plan:kind==='bus'?{v:1,region:data.bus.id,data:data.bus.version,from:'',to:'',legs:[]}:{v:1,region:data.region.id,from:'',to:'',legs:[]}};steps.push(last);}last.plan.legs.push(leg.slice(1));}return steps;
 }
 // Merge explicitly continuous rides so a bus/train split in the composer does not add a false wait or station exit.
 export function normalizeMixedLegs(data,legs){
@@ -58,7 +58,7 @@ export function validateMixedPlan(data,plan,{requireBoth=true}={}){
   for(let i=1;i<details.length;i++){
     const a=details[i-1],b=details[i],from=a.path.at(-1),to=b.path[0],meters=groundMeters([from.lat,from.lng],[to.lat,to.lng]);
     const internal=a.kind==='subway'&&b.kind==='subway'&&from.id===to.id;
-    if(a.kind===b.kind&&a.id===b.id&&from.id===to.id)throw Error('invalid-continuation');
+    if(a.kind==='subway'&&b.kind==='subway'&&a.id===b.id&&from.id===to.id)throw Error('invalid-continuation');
     if(!internal&&meters>options.maxTransferMeters){const e=Error('transfer-too-far');e.gap={index:i,meters:Math.round(meters),from,to};throw e;}
     connections.push({index:i,from,to,meters:Math.round(meters),internal});
   }
