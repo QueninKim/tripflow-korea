@@ -1,4 +1,4 @@
-import {rideShape} from './journey-shapes.js?v=web-14';
+import {rideShape} from './journey-shapes.js?v=web-15';
 export const journeyStyles={
   bus:{color:'#2368dc',weight:6,dashArray:null},
   subway:{color:'#8c39c7',weight:7,dashArray:null},

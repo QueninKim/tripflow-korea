@@ -1,4 +1,4 @@
-import {metroGraph,metroPaths} from './metro-core.js?v=web-14';
+import {metroGraph,metroPaths} from './metro-core.js?v=web-15';
 const NS='http://www.w3.org/2000/svg';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
 export function createNetworkMap({element,region,layout,label,t,h,camera,onStation,onCamera}){

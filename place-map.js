@@ -1,0 +1,19 @@
+import {createLocationOverlay} from './location-overlay.js?v=web-15';
+export function createPlaceMapViewer(ctx){
+  const {modal,t,h,modalTop,openModal}=ctx;let map,overlay,observer,places=[],selected=0;
+  function destroy(){overlay?.destroy();overlay=null;observer?.disconnect();observer=null;map?.remove();map=null;}
+  function open(list=[]){
+    destroy();places=list.filter(p=>Number.isFinite(p?.latitude)&&Number.isFinite(p?.longitude));selected=0;
+    openModal(`${modalTop(places.length===1?ctx.placeName(places[0]):t('My trip map','내 여행 지도'))}<p class="note">${t('Explore your places and current location inside TripFlow.','앱 안에서 여행 장소와 현재 위치를 함께 확인하세요.')}</p><div class="network-map-frame saved-journey-frame"><div id="placeMap" class="journey-map" role="region" aria-label="${t('Places and current location map','여행 장소와 현재 위치 지도')}"></div><div class="network-map-buttons"><button type="button" data-place-map="zoom-in" aria-label="${t('Zoom in','장소 지도 확대')}">＋</button><button type="button" data-place-map="zoom-out" aria-label="${t('Zoom out','장소 지도 축소')}">−</button><button type="button" data-place-map="fit">${t('All places','전체 장소')}</button></div></div><div class="map-place-list">${places.map((p,i)=>`<article><button type="button" data-place-map="focus" data-index="${i}"><b>${i+1}. ${h(ctx.placeName(p))}</b><small>${h(p.address)}</small></button><button type="button" data-place-map="directions" data-index="${i}" class="secondary">${t('Route from my location','현재 위치에서 여기로')}</button></article>`).join('')}</div>`);
+    modal.classList.add('network-modal','place-map-modal');const element=modal.querySelector('#placeMap'),L=window.L;
+    if(!L?.map){element.textContent=t('The map could not load. Check your connection and reopen.','지도를 불러오지 못했어요. 연결을 확인하고 다시 열어주세요.');return;}
+    map=L.map(element,{zoomControl:false,scrollWheelZoom:false,maxZoom:19,minZoom:3});map.attributionControl.setPrefix(false);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors'}).addTo(map);L.control.scale({imperial:false}).addTo(map);
+    places.forEach((p,i)=>{const label=document.createElement('span');label.textContent=(i+1)+'. '+ctx.placeName(p);L.marker([p.latitude,p.longitude],{title:ctx.placeName(p),icon:L.divIcon({className:'journey-pin',html:`<span style="--pin-color:#216767;--pin-size:28px">${i+1}</span>`,iconSize:[28,28],iconAnchor:[14,14]})}).addTo(map).bindPopup(label).on('click',()=>{selected=i;});});
+    fit();overlay=createLocationOverlay({element,map,L,service:ctx.location,t,onFrom:places.length?fix=>{const destination=places[selected];destroy();ctx.onDirections(destination,fix);}:undefined});observer=new ResizeObserver(()=>map?.invalidateSize({pan:false}));observer.observe(element);modal.scrollTop=0;
+  }
+  function fit(){if(!map)return;if(!places.length)map.setView([36.3,127.6],7);else if(places.length===1)map.setView([places[0].latitude,places[0].longitude],15);else map.fitBounds(places.map(p=>[p.latitude,p.longitude]),{paddingTopLeft:[35,122],paddingBottomRight:[35,100],maxZoom:15,animate:false});}
+  modal.addEventListener('click',e=>{if(!modal.classList.contains('place-map-modal'))return;const el=e.target.closest('[data-place-map]');if(!el)return;const a=el.dataset.placeMap,p=places[Number(el.dataset.index)];if(a==='zoom-in')map?.zoomIn();if(a==='zoom-out')map?.zoomOut();if(a==='fit')fit();if(a==='focus'&&p){selected=Number(el.dataset.index);map?.setView([p.latitude,p.longitude],16,{animate:false});}if(a==='directions'&&p){destroy();ctx.onDirections(p);}});
+  modal.addEventListener('tripflow:replace',destroy);
+  modal.addEventListener('close',()=>{if(!modal.open)destroy();});return {open,destroy};
+}

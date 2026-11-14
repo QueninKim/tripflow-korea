@@ -1,5 +1,6 @@
-import {journeyGeometry,journeyStyles} from './journey-geometry.js?v=web-14';
-import {loadJourneyShapes} from './journey-shapes.js?v=web-14';
+import {createLocationOverlay} from './location-overlay.js?v=web-15';
+import {journeyGeometry,journeyStyles} from './journey-geometry.js?v=web-15';
+import {loadJourneyShapes} from './journey-shapes.js?v=web-15';
 export function journeyMapLegend(t){return `<div class="journey-map-legend" aria-label="${t('Route map legend','경로 지도 범례')}"><span><i class="journey-key-bus"></i>${t('Bus','버스')}</span><span><i class="journey-key-subway"></i>${t('Subway','지하철')}</span><span><i class="journey-key-walking"></i>${t('Walk','도보')}</span><small>${t('Numbers show boarding order','숫자는 탑승 순서')}</small></div>`;}
 export function journeyMapNote(t){return t('Bus lines follow official road geometry; subway lines follow mapped tracks. Missing source sections are left blank. Dashed walking links are reference connections, not pedestrian directions.','버스는 공식 운행 도로, 지하철은 지도에 기록된 선로를 따라 표시합니다. 자료가 없는 구간은 비워 둡니다. 점선 도보는 위치 연결 참고선이며 실제 보행 길안내가 아닙니다.')+` <a href="./route-shape-sources.html" target="_blank" rel="noopener">${t('Sources & coverage','출처·표시 범위')} ↗</a>`;}
 export function createJourneyMap(options){
@@ -9,14 +10,14 @@ export function createJourneyMap(options){
   const ready=options.shapes?Promise.resolve():((options.loadShapes||loadJourneyShapes)(options.region).then(shapes=>render(shapes,'loaded')).catch(()=>render(null,'error')));
   return {ready,zoom:factor=>inner?.zoom(factor),fit:()=>inner?.fit(),focusLeg:i=>inner?.focusLeg(i),getCamera:()=>inner?.getCamera(),destroy:()=>{disposed=true;inner?.destroy();}};
 }
-function renderJourneyMap({element,quote,fromPlace,toPlace,t,placeName,camera,onStation=()=>{},library=window.L,shapes,shapeState}){
+function renderJourneyMap({element,quote,fromPlace,toPlace,t,placeName,camera,onStation=()=>{},library=window.L,shapes,shapeState,location,onFromCurrent}){
   const geometry=journeyGeometry(quote,{fromPlace,toPlace,shapes}),name=p=>p.name?placeName(p):t(p.en||p.ko,p.ko),kindName=k=>k==='bus'?t('Bus','버스'):k==='subway'?t('Subway','지하철'):t('Walk','도보');
   const status=document.createElement('div');status.className='journey-map-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
   element.classList.add('journey-map');element.setAttribute('role','region');element.setAttribute('aria-label',t('Selected journey on the street map','실제 지도 위 선택한 이동경로'));
   const viewport=document.createElement('div');viewport.className='journey-map-viewport';const coverage=document.createElement('div');coverage.className='journey-shape-status';coverage.setAttribute('role','status');coverage.setAttribute('aria-live','polite');
   const missing=geometry.coverage.filter(c=>c.available<c.total);element.dataset.shapeStatus=shapeState==='loading'?'loading':missing.length?'partial':'complete';
   coverage.textContent=shapeState==='loading'?t('Loading road and track shapes…','운행 도로·선로를 불러오는 중…'):shapeState==='error'?t('Route geometry could not load. Stops remain visible. Reopen the map to retry.','운행 경로 자료를 불러오지 못했습니다. 정류장·역 위치는 표시됩니다. 지도를 다시 열어 재시도해주세요.'):missing.length?t('Geometry unavailable for part of: ','일부 구간의 운행 경로 자료 없음: ')+missing.map(c=>`${c.legIndex+1}. ${t(c.service.en,c.service.ko)} (${c.available}/${c.total})`).join(' · '):quote.details.length?t('Following bus roads and subway tracks','버스 운행 도로·지하철 선로 표시 중'):t('Walking connection · reference only','도보 위치 연결 · 참고용');
-  element.replaceChildren(viewport,status,coverage);let real,tiles,observer,disposed=false,frames=[];
+  element.replaceChildren(viewport,status,coverage);let real,tiles,observer,locationOverlay,disposed=false,frames=[];
   const notify=(state,text='')=>{if(disposed)return;element.dataset.mapStatus=state;status.textContent=text;};
   function fallback(){
     element.setAttribute('aria-label',t('Selected journey map unavailable','선택한 이동경로 지도 사용 불가'));
@@ -27,7 +28,7 @@ function renderJourneyMap({element,quote,fromPlace,toPlace,t,placeName,camera,on
   if(!library?.map||!library?.tileLayer)return fallback();
   const L=library;
   function popup(title,subtitle){const div=document.createElement('div');div.className='journey-map-popup';const strong=document.createElement('strong');strong.textContent=title;div.append(strong);if(subtitle){const small=document.createElement('small');small.textContent=subtitle;div.append(small);}return div;}
-  const fit=(bounds=geometry.bounds)=>{if(disposed)return;real.invalidateSize({pan:false});real.fitBounds(bounds,{padding:[29,36],maxZoom:16,animate:false});};
+  const fit=(bounds=geometry.bounds)=>{if(disposed)return;real.invalidateSize({pan:false});real.fitBounds(bounds,{paddingTopLeft:location?[30,122]:[29,36],paddingBottomRight:location?[30,100]:[29,36],maxZoom:16,animate:false});};
   try{
     real=L.map(viewport,{zoomControl:false,minZoom:5,maxZoom:19,scrollWheelZoom:false,zoomSnap:.5,keyboard:true,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false});real.attributionControl.setPrefix(false);
     let tileErrors=0;
@@ -61,10 +62,11 @@ function renderJourneyMap({element,quote,fromPlace,toPlace,t,placeName,camera,on
       }else L.circleMarker(pin.point,{radius:4,color,weight:2,fillColor:'#fff',fillOpacity:1}).addTo(real).bindPopup(content);
     }
     if(camera?.type==='geographic'&&Array.isArray(camera.center)&&camera.center.every(Number.isFinite)&&Number.isFinite(camera.zoom))real.setView(camera.center,camera.zoom,{animate:false});else fit();
+    locationOverlay=createLocationOverlay({element,map:real,L,service:location,t,onFrom:onFromCurrent});
     observer=new ResizeObserver(()=>{if(!disposed)real.invalidateSize({pan:false});});observer.observe(element);
     frames.push(requestAnimationFrame(()=>{if(!disposed)real.invalidateSize({pan:false});}));
-    return {zoom:factor=>{if(!disposed)real.setZoom(real.getZoom()+Math.log2(factor),{animate:false});},fit:()=>fit(),focusLeg:index=>{const points=geometry.lines.filter(l=>l.role==='ride'&&l.legIndex===index).flatMap(l=>l.points);if(points.length)fit(L.latLngBounds(points));},getCamera:()=>{const p=real.getCenter();return {type:'geographic',center:[p.lat,p.lng],zoom:real.getZoom()};},destroy:()=>{disposed=true;observer?.disconnect();for(const f of frames)cancelAnimationFrame(f);real.remove();}};
+    return {zoom:factor=>{if(!disposed)real.setZoom(real.getZoom()+Math.log2(factor),{animate:false});},fit:()=>fit(),focusLeg:index=>{const points=geometry.lines.filter(l=>l.role==='ride'&&l.legIndex===index).flatMap(l=>l.points);if(points.length)fit(L.latLngBounds(points));},getCamera:()=>{const p=real.getCenter();return {type:'geographic',center:[p.lat,p.lng],zoom:real.getZoom()};},destroy:()=>{disposed=true;locationOverlay?.destroy();observer?.disconnect();for(const f of frames)cancelAnimationFrame(f);real.remove();}};
   }catch{
-    observer?.disconnect();for(const f of frames)cancelAnimationFrame(f);try{real?.remove();}catch{}viewport.replaceChildren();return fallback();
+    locationOverlay?.destroy();observer?.disconnect();for(const f of frames)cancelAnimationFrame(f);try{real?.remove();}catch{}viewport.replaceChildren();return fallback();
   }
 }

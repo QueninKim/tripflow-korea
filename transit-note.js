@@ -1,7 +1,7 @@
-import {readAutoNote,mergeAutoNote} from './auto-note.js?v=web-14';
-import {readMetroNote,mergeMetroNote,metroStatus,metroTimingText} from './metro-core.js?v=web-14';
-import {readMixedNote,mergeMixedNote} from './mixed-core.js?v=web-14';
-import {readBusNote,mergeBusNote} from './bus-core.js?v=web-14';
+import {readAutoNote,mergeAutoNote} from './auto-note.js?v=web-15';
+import {readMetroNote,mergeMetroNote,metroStatus,metroTimingText} from './metro-core.js?v=web-15';
+import {readMixedNote,mergeMixedNote} from './mixed-core.js?v=web-15';
+import {readBusNote,mergeBusNote} from './bus-core.js?v=web-15';
 export function readTransitNote(note=''){
   const auto=readAutoNote(note);if(auto.plan)return {...auto,kind:'auto'};
   const mixed=readMixedNote(note);if(mixed.plan)return {...mixed,kind:'mixed'};
